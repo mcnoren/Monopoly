@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monopoly: Connected Edition</title>
+    <title>Monopoly: Connected Edition (v2)</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
@@ -22,6 +22,7 @@
             align-items: center;
             height: 100vh;
             overflow: hidden;
+            user-select: none;
         }
 
         /* --- SCREEN VISIBILITY --- */
@@ -29,7 +30,7 @@
         .active { display: flex; }
 
         /* --- LANDING SCREEN --- */
-        #landing-screen h1 { font-size: 3rem; margin-bottom: 40px; }
+        #landing-screen h1 { font-size: 3rem; margin-bottom: 20px; text-shadow: 2px 2px 4px #000; }
         .btn-large {
             padding: 20px 40px;
             font-size: 1.5rem;
@@ -39,15 +40,16 @@
             cursor: pointer;
             width: 300px;
             font-weight: bold;
-            transition: transform 0.2s;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: transform 0.1s;
         }
-        .btn-large:hover { transform: scale(1.05); }
+        .btn-large:active { transform: translateY(4px); box-shadow: none; }
         #btn-host { background-color: #27ae60; color: white; }
         #btn-join { background-color: #2980b9; color: white; }
         
         input#join-code {
             padding: 15px;
-            font-size: 1.5rem;
+            font-size: 2rem;
             text-align: center;
             border-radius: 10px;
             border: none;
@@ -55,6 +57,7 @@
             text-transform: uppercase;
             letter-spacing: 5px;
             width: 200px;
+            font-weight: bold;
         }
 
         /* --- HOST SCREEN (BOARD) --- */
@@ -62,14 +65,18 @@
         #game-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             width: var(--board-size);
             margin-bottom: 10px;
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
             border-radius: 8px;
+            box-sizing: border-box;
         }
-        .code-display { font-size: 1.2rem; }
-        .code-display span { color: #f1c40f; font-weight: bold; font-size: 1.5rem; letter-spacing: 2px; }
+        .code-display { font-size: 1rem; color: #bdc3c7; }
+        .code-display span { color: #f1c40f; font-weight: bold; font-size: 1.8rem; letter-spacing: 2px; margin-left: 10px; }
+        
+        #current-action-display { font-size: 1.2rem; font-weight: bold; }
 
         #board-wrapper {
             position: relative;
@@ -78,58 +85,87 @@
             background-image: url('monopoly_board.png');
             background-size: cover;
             border-radius: 4px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
         }
 
         .token {
             position: absolute;
             width: 4%; height: 4%;
             border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.8);
+            border: 3px solid white;
+            box-shadow: 3px 3px 6px rgba(0,0,0,0.9);
             transform: translate(-50%, -50%);
-            transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+            transition: top 0.5s ease-out, left 0.5s ease-out; /* Smooth movement */
             z-index: 10;
         }
         
-        /* Dynamic Player Colors */
-        .p-red { background: #e74c3c; }
-        .p-blue { background: #3498db; }
-        .p-green { background: #2ecc71; }
-        .p-yellow { background: #f1c40f; }
+        /* Player Colors */
+        .p-0 { background: #e74c3c; } /* Red */
+        .p-1 { background: #3498db; } /* Blue */
+        .p-2 { background: #2ecc71; } /* Green */
+        .p-3 { background: #f1c40f; } /* Yellow */
+
+        /* Owned Markers */
+        .owner-marker {
+            position: absolute;
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
 
         /* --- CONTROLLER SCREEN (PLAYER) --- */
-        #controller-screen { background-color: #34495e; padding: 20px; text-align: center; }
-        #player-status { font-size: 1.2rem; margin-bottom: 20px; }
-        #money-display { font-size: 3rem; color: #2ecc71; font-weight: bold; margin: 20px 0; }
+        #controller-screen { background-color: #34495e; padding: 20px; text-align: center; justify-content: space-between;}
+        #c-header { margin-top: 20px; }
+        #c-player-name { font-size: 2rem; margin: 0; }
+        #c-balance { font-size: 3.5rem; font-weight: bold; color: #2ecc71; margin: 10px 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
         
+        #controls-area {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
         .control-btn {
             width: 100%;
-            padding: 25px;
-            font-size: 1.5rem;
+            padding: 30px;
+            font-size: 1.8rem;
             border: none;
             border-radius: 15px;
-            margin-bottom: 15px;
             cursor: pointer;
-            opacity: 0.5;
-            pointer-events: none; /* Disabled by default */
+            font-weight: bold;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+            transition: all 0.1s;
+            display: none; /* Hidden by default */
         }
-        .control-btn.active-turn { opacity: 1; pointer-events: all; }
+        .control-btn:active { transform: translateY(6px); box-shadow: none; }
 
-        #btn-roll { background-color: #e67e22; color: white; }
+        #btn-roll { background-color: #e67e22; color: white; display: none; }
         #btn-buy { background-color: #27ae60; color: white; display: none; }
         #btn-pass { background-color: #c0392b; color: white; display: none; }
         
+        .waiting-msg { font-size: 1.2rem; color: #7f8c8d; animation: pulse 1.5s infinite; display: none;}
+        
         #log-area {
-            margin-top: auto;
-            background: rgba(0,0,0,0.2);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            color: #bdc3c7;
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1rem;
+            color: #ecf0f1;
+            width: 100%;
+            box-sizing: border-box;
+            height: 100px;
+            overflow-y: auto;
+            text-align: left;
         }
 
-        /* Responsive Board */
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+
+        /* Responsive */
         @media (max-width: 900px) {
             :root { --board-size: 95vw; }
         }
@@ -138,418 +174,434 @@
 <body>
 
     <div id="landing-screen" class="screen active">
-        <h1>Monopoly Connect</h1>
+        <h1>Monopoly Live</h1>
         <button id="btn-host" class="btn-large" onclick="initHost()">HOST GAME</button>
-        <div style="height: 20px;"></div>
+        <div style="height: 30px;"></div>
         <input type="text" id="join-code" placeholder="CODE" maxlength="4">
         <button id="btn-join" class="btn-large" onclick="initPlayer()">JOIN GAME</button>
     </div>
 
     <div id="host-screen" class="screen">
         <div id="game-header">
-            <div class="code-display">Join Code: <span id="display-code">----</span></div>
-            <div id="turn-indicator">Waiting for players...</div>
+            <div class="code-display">CODE: <span id="display-code">----</span></div>
+            <div id="current-action-display">Waiting for players...</div>
         </div>
         <div id="board-wrapper">
             </div>
-        <div style="margin-top: 10px; color: #bdc3c7;">
-            Players Connected: <span id="player-count">0</span>
-            <button onclick="startGame()" id="start-btn" style="margin-left: 20px; padding: 5px 10px; background: #27ae60; border:none; color:white; border-radius:4px; cursor:pointer;">START GAME</button>
+        <div style="margin-top: 15px; width: var(--board-size); display:flex; justify-content: space-between; align-items: center;">
+            <div style="color: #bdc3c7;">Connected: <span id="player-count">0</span></div>
+            <button onclick="startGame()" id="start-btn" style="padding: 10px 20px; background: #27ae60; border:none; color:white; border-radius:5px; font-weight:bold; cursor:pointer;">START GAME</button>
         </div>
+        <div id="host-log" style="width: var(--board-size); height: 50px; font-size: 0.8rem; overflow:hidden; color:#7f8c8d; margin-top:5px;"></div>
     </div>
 
     <div id="controller-screen" class="screen">
-        <h2 id="c-player-name">Player X</h2>
-        <div id="c-info">Waiting for host to start...</div>
-        <div id="money-display">$1500</div>
+        <div id="c-header">
+            <h2 id="c-player-name">Player</h2>
+            <div id="c-status" style="color: #bdc3c7;">Connected</div>
+        </div>
         
-        <button id="btn-roll" class="control-btn" onclick="sendAction('ROLL')">ROLL DICE</button>
+        <div id="c-balance">$1500</div>
         
-        <button id="btn-buy" class="control-btn" onclick="sendAction('BUY')">BUY ($0)</button>
-        <button id="btn-pass" class="control-btn" onclick="sendAction('PASS')">PASS</button>
+        <div id="controls-area">
+            <div id="msg-waiting" class="waiting-msg">Waiting for other players...</div>
+            <button id="btn-roll" class="control-btn" onclick="sendAction('ROLL')">ROLL DICE</button>
+            <button id="btn-buy" class="control-btn" onclick="sendAction('BUY')">BUY PROPERTY</button>
+            <button id="btn-pass" class="control-btn" onclick="sendAction('PASS')">PASS</button>
+        </div>
 
-        <div id="log-area">Game Log...</div>
+        <div id="log-area">Welcome! Waiting for game start...</div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        // Exclude confusing chars (0, O, 1, I, L)
+        // --- CONSTANTS ---
         const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
-        const APP_PREFIX = "monopoly-peer-game-"; 
+        const APP_PREFIX = "poly-v2-"; 
         
-        // --- BOARD DATA (Percent Coordinates) ---
+        // --- BOARD DATA ---
+        // Top/Left percentages tailored to the specific Monopoly board image
         const boardMap = [
             { name: "GO", type: "go", top: 93, left: 93 }, 
-            { name: "Mediter. Ave", type: "prop", price: 60, cost: 60, owner: null, top: 93, left: 85.5 },
-            { name: "Comm. Chest", type: "chest", top: 93, left: 77.5 },
-            { name: "Baltic Ave", type: "prop", price: 60, cost: 60, owner: null, top: 93, left: 69.5 },
+            { name: "Mediterranean Ave", type: "prop", price: 60, rent: 2, owner: null, top: 93, left: 85.5 },
+            { name: "Community Chest", type: "chest", top: 93, left: 77.5 },
+            { name: "Baltic Ave", type: "prop", price: 60, rent: 4, owner: null, top: 93, left: 69.5 },
             { name: "Income Tax", type: "tax", cost: 200, top: 93, left: 61.5 },
-            { name: "Reading RR", type: "prop", price: 200, cost: 200, owner: null, top: 93, left: 53.5 },
-            { name: "Oriental Ave", type: "prop", price: 100, cost: 100, owner: null, top: 93, left: 45.5 },
+            { name: "Reading RR", type: "prop", price: 200, rent: 25, owner: null, top: 93, left: 53.5 },
+            { name: "Oriental Ave", type: "prop", price: 100, rent: 6, owner: null, top: 93, left: 45.5 },
             { name: "Chance", type: "chance", top: 93, left: 37.5 },
-            { name: "Vermont Ave", type: "prop", price: 100, cost: 100, owner: null, top: 93, left: 29.5 },
-            { name: "Conn. Ave", type: "prop", price: 120, cost: 120, owner: null, top: 93, left: 21.5 },
+            { name: "Vermont Ave", type: "prop", price: 100, rent: 6, owner: null, top: 93, left: 29.5 },
+            { name: "Connecticut Ave", type: "prop", price: 120, rent: 8, owner: null, top: 93, left: 21.5 },
             { name: "Jail", type: "jail", top: 93, left: 7 },
-            { name: "St. Charles", type: "prop", price: 140, cost: 140, owner: null, top: 85.5, left: 7 },
-            { name: "Electric Co", type: "prop", price: 150, cost: 150, owner: null, top: 77.5, left: 7 },
-            { name: "States Ave", type: "prop", price: 140, cost: 140, owner: null, top: 69.5, left: 7 },
-            { name: "Virginia Ave", type: "prop", price: 160, cost: 160, owner: null, top: 61.5, left: 7 },
-            { name: "Penn RR", type: "prop", price: 200, cost: 200, owner: null, top: 53.5, left: 7 },
-            { name: "St. James", type: "prop", price: 180, cost: 180, owner: null, top: 45.5, left: 7 },
-            { name: "Comm. Chest", type: "chest", top: 37.5, left: 7 },
-            { name: "Tennessee", type: "prop", price: 180, cost: 180, owner: null, top: 29.5, left: 7 },
-            { name: "New York", type: "prop", price: 200, cost: 200, owner: null, top: 21.5, left: 7 },
+            { name: "St. Charles Place", type: "prop", price: 140, rent: 10, owner: null, top: 85.5, left: 7 },
+            { name: "Electric Co", type: "prop", price: 150, rent: 15, owner: null, top: 77.5, left: 7 },
+            { name: "States Ave", type: "prop", price: 140, rent: 10, owner: null, top: 69.5, left: 7 },
+            { name: "Virginia Ave", type: "prop", price: 160, rent: 12, owner: null, top: 61.5, left: 7 },
+            { name: "Penn RR", type: "prop", price: 200, rent: 25, owner: null, top: 53.5, left: 7 },
+            { name: "St. James Place", type: "prop", price: 180, rent: 14, owner: null, top: 45.5, left: 7 },
+            { name: "Community Chest", type: "chest", top: 37.5, left: 7 },
+            { name: "Tennessee Ave", type: "prop", price: 180, rent: 14, owner: null, top: 29.5, left: 7 },
+            { name: "New York Ave", type: "prop", price: 200, rent: 16, owner: null, top: 21.5, left: 7 },
             { name: "Free Parking", type: "parking", top: 7, left: 7 },
-            { name: "Kentucky", type: "prop", price: 220, cost: 220, owner: null, top: 7, left: 21.5 },
+            { name: "Kentucky Ave", type: "prop", price: 220, rent: 18, owner: null, top: 7, left: 21.5 },
             { name: "Chance", type: "chance", top: 7, left: 29.5 },
-            { name: "Indiana", type: "prop", price: 220, cost: 220, owner: null, top: 7, left: 37.5 },
-            { name: "Illinois", type: "prop", price: 240, cost: 240, owner: null, top: 7, left: 45.5 },
-            { name: "B&O RR", type: "prop", price: 200, cost: 200, owner: null, top: 7, left: 53.5 },
-            { name: "Atlantic", type: "prop", price: 260, cost: 260, owner: null, top: 7, left: 61.5 },
-            { name: "Ventnor", type: "prop", price: 260, cost: 260, owner: null, top: 7, left: 69.5 },
-            { name: "Water Works", type: "prop", price: 150, cost: 150, owner: null, top: 7, left: 77.5 },
-            { name: "Marvin G.", type: "prop", price: 280, cost: 280, owner: null, top: 7, left: 85.5 },
+            { name: "Indiana Ave", type: "prop", price: 220, rent: 18, owner: null, top: 7, left: 37.5 },
+            { name: "Illinois Ave", type: "prop", price: 240, rent: 20, owner: null, top: 7, left: 45.5 },
+            { name: "B&O RR", type: "prop", price: 200, rent: 25, owner: null, top: 7, left: 53.5 },
+            { name: "Atlantic Ave", type: "prop", price: 260, rent: 22, owner: null, top: 7, left: 61.5 },
+            { name: "Ventnor Ave", type: "prop", price: 260, rent: 22, owner: null, top: 7, left: 69.5 },
+            { name: "Water Works", type: "prop", price: 150, rent: 15, owner: null, top: 7, left: 77.5 },
+            { name: "Marvin Gardens", type: "prop", price: 280, rent: 24, owner: null, top: 7, left: 85.5 },
             { name: "Go To Jail", type: "gotojail", top: 7, left: 93 },
-            { name: "Pacific", type: "prop", price: 300, cost: 300, owner: null, top: 21.5, left: 93 },
-            { name: "N. Carolina", type: "prop", price: 300, cost: 300, owner: null, top: 29.5, left: 93 },
-            { name: "Comm. Chest", type: "chest", top: 37.5, left: 93 },
-            { name: "Penn Ave", type: "prop", price: 320, cost: 320, owner: null, top: 45.5, left: 93 },
-            { name: "Short Line", type: "prop", price: 200, cost: 200, owner: null, top: 53.5, left: 93 },
+            { name: "Pacific Ave", type: "prop", price: 300, rent: 26, owner: null, top: 21.5, left: 93 },
+            { name: "N. Carolina Ave", type: "prop", price: 300, rent: 26, owner: null, top: 29.5, left: 93 },
+            { name: "Community Chest", type: "chest", top: 37.5, left: 93 },
+            { name: "Penn Ave", type: "prop", price: 320, rent: 28, owner: null, top: 45.5, left: 93 },
+            { name: "Short Line", type: "prop", price: 200, rent: 25, owner: null, top: 53.5, left: 93 },
             { name: "Chance", type: "chance", top: 61.5, left: 93 },
-            { name: "Park Place", type: "prop", price: 350, cost: 350, owner: null, top: 69.5, left: 93 },
+            { name: "Park Place", type: "prop", price: 350, rent: 35, owner: null, top: 69.5, left: 93 },
             { name: "Luxury Tax", type: "tax", cost: 100, top: 77.5, left: 93 },
-            { name: "Boardwalk", type: "prop", price: 400, cost: 400, owner: null, top: 85.5, left: 93 },
+            { name: "Boardwalk", type: "prop", price: 400, rent: 50, owner: null, top: 85.5, left: 93 },
         ];
 
-        // --- GLOBAL STATE ---
+        // --- STATE MANAGEMENT ---
         let peer;
-        let myRole = null; // 'HOST' or 'PLAYER'
+        let connections = {}; // Map: playerId -> connection
         
-        // HOST VARIABLES
-        let hostCode = "";
-        let connections = []; // Array of PeerJS data connections
+        // Host State
         let gameState = {
-            players: [], // { id, name, color, position, money, isJailed, connId }
-            currentPlayerIndex: 0,
-            gameStarted: false,
-            waitingForAction: false, // if true, waiting for buy/pass
-            currentProperty: null // index of property currently being decided on
+            players: [], // { id, name, color, position, money, jailed, peerId }
+            turnIndex: 0,
+            started: false,
+            turnPhase: 'IDLE', // IDLE, ROLLING, DECIDING
+            pendingPropertyIndex: null // If deciding to buy, which square?
         };
-        const COLORS = ['p-red', 'p-blue', 'p-green', 'p-yellow'];
-        const NAMES = ['Red', 'Blue', 'Green', 'Yellow'];
 
-        // PLAYER VARIABLES
+        // Client State
+        let myId = null;
         let hostConn = null;
-        let myPlayerId = null;
 
+        const PLAYER_NAMES = ["Red", "Blue", "Green", "Yellow"];
 
         // --- UTILS ---
-        function switchScreen(screenId) {
+        function switchScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
+            document.getElementById(id).classList.add('active');
         }
 
         function generateCode() {
-            let result = '';
-            for (let i = 0; i < 4; i++) {
-                result += CODE_CHARS.charAt(Math.floor(Math.random() * CODE_CHARS.length));
-            }
-            return result;
+            let res = '';
+            for(let i=0; i<4; i++) res += CODE_CHARS.charAt(Math.floor(Math.random()*CODE_CHARS.length));
+            return res;
+        }
+
+        function hostLog(msg) {
+            console.log(msg);
+            const el = document.getElementById('host-log');
+            if(el) el.innerText = msg;
         }
 
         // --- HOST LOGIC ---
+
         function initHost() {
-            myRole = 'HOST';
-            hostCode = generateCode();
+            const code = generateCode();
             switchScreen('host-screen');
-            document.getElementById('display-code').innerText = hostCode;
+            document.getElementById('display-code').innerText = code;
 
-            // Initialize Peer with a specific ID prefixed to avoid collisions
-            peer = new Peer(APP_PREFIX + hostCode);
-
+            peer = new Peer(APP_PREFIX + code);
+            
             peer.on('open', (id) => {
-                console.log('Host initialized with ID: ' + id);
+                hostLog(`Host Open: ${id}`);
             });
 
             peer.on('connection', (conn) => {
-                handleNewConnection(conn);
-            });
-            
-            peer.on('error', (err) => {
-                alert("Connection Error (Host): " + err);
-            });
-        }
+                if(gameState.started) {
+                    conn.send({ type: 'ERROR', msg: 'Game Started' });
+                    return;
+                }
+                
+                // Assign Player ID
+                const newId = gameState.players.length;
+                if(newId >= 4) { conn.send({type:'ERROR', msg:'Full'}); return; }
 
-        function handleNewConnection(conn) {
-            if (gameState.gameStarted) {
-                conn.send({ type: 'ERROR', msg: 'Game already started' });
-                return;
-            }
+                connections[newId] = conn;
+                
+                const newPlayer = {
+                    id: newId,
+                    name: PLAYER_NAMES[newId],
+                    color: `p-${newId}`,
+                    position: 0,
+                    money: 1500,
+                    jailed: false
+                };
 
-            connections.push(conn);
-            
-            // Assign Player Slot
-            const pIndex = connections.length - 1;
-            if (pIndex >= 4) {
-                 conn.send({ type: 'ERROR', msg: 'Game Full' });
-                 return;
-            }
+                gameState.players.push(newPlayer);
+                createPlayerToken(newPlayer);
+                updatePlayerCount();
 
-            const newPlayer = {
-                id: pIndex,
-                name: NAMES[pIndex],
-                color: COLORS[pIndex],
-                position: 0,
-                money: 1500,
-                isJailed: false,
-                connId: conn.peer
-            };
-            gameState.players.push(newPlayer);
-            
-            // Render Token on Board
-            createToken(newPlayer);
-
-            document.getElementById('player-count').innerText = gameState.players.length;
-
-            conn.on('open', () => {
-                conn.send({ 
-                    type: 'WELCOME', 
-                    player: newPlayer 
+                conn.on('open', () => {
+                    conn.send({ type: 'WELCOME', id: newId, name: newPlayer.name, color: newPlayer.color });
+                    broadcastGameState("Player Connected");
                 });
-            });
 
-            conn.on('data', (data) => {
-                handlePlayerAction(pIndex, data);
+                conn.on('data', (data) => handleHostInput(newId, data));
+                conn.on('close', () => hostLog(`Player ${newId} disconnected`));
             });
         }
 
-        function createToken(player) {
-            const token = document.createElement('div');
-            token.className = `token ${player.color}`;
-            token.id = `token-${player.id}`;
-            // Offset slightly to prevent perfect overlap
-            const offset = (player.id * 2) - 3; 
-            token.style.marginTop = `${offset}%`;
-            token.style.marginLeft = `${offset}%`;
-            document.getElementById('board-wrapper').appendChild(token);
-            updateTokenPosition(player);
+        function createPlayerToken(p) {
+            const el = document.createElement('div');
+            el.className = `token ${p.color}`;
+            el.id = `token-${p.id}`;
+            // Offset logic
+            const off = (p.id * 3) - 4.5;
+            el.style.marginTop = `${off}%`;
+            el.style.marginLeft = `${off}%`;
+            document.getElementById('board-wrapper').appendChild(el);
+            updateTokenPos(p);
         }
 
-        function updateTokenPosition(player) {
-            const el = document.getElementById(`token-${player.id}`);
-            const pos = boardMap[player.position];
-            el.style.top = pos.top + '%';
-            el.style.left = pos.left + '%';
+        function updateTokenPos(p) {
+            const el = document.getElementById(`token-${p.id}`);
+            const sq = boardMap[p.position];
+            el.style.top = sq.top + "%";
+            el.style.left = sq.left + "%";
+        }
+
+        function updatePlayerCount() {
+            document.getElementById('player-count').innerText = gameState.players.length;
         }
 
         function startGame() {
-            if (gameState.players.length < 1) {
-                alert("Need at least 1 player to test!"); // Allow 1 for testing
-                // return;
-            }
-            gameState.gameStarted = true;
+            if(gameState.players.length < 1) return alert("Need 1 player to test.");
+            gameState.started = true;
+            gameState.turnIndex = 0;
+            gameState.turnPhase = 'ROLLING';
             document.getElementById('start-btn').style.display = 'none';
-            broadcastState("Game Started!");
+            broadcastGameState(`Game Started! ${gameState.players[0].name}'s Turn.`);
         }
 
-        function handlePlayerAction(pIndex, action) {
-            if (pIndex !== gameState.currentPlayerIndex) return; // Not your turn
+        function handleHostInput(pId, data) {
+            if(!gameState.started) return;
+            if(pId !== gameState.turnIndex) return; // Not your turn
 
-            const player = gameState.players[pIndex];
+            if(data.type === 'ROLL' && gameState.turnPhase === 'ROLLING') {
+                performRoll(pId);
+            }
+            else if(data.type === 'BUY' && gameState.turnPhase === 'DECIDING') {
+                performBuy(pId);
+            }
+            else if(data.type === 'PASS' && gameState.turnPhase === 'DECIDING') {
+                performPass(pId);
+            }
+        }
 
-            if (action.type === 'ROLL') {
-                if (gameState.waitingForAction) return; // Must buy or pass first
-                
-                const d1 = Math.floor(Math.random() * 6) + 1;
-                const d2 = Math.floor(Math.random() * 6) + 1;
-                const roll = d1 + d2;
-                
-                // Logic: Move
-                let newPos = player.position + roll;
-                if (newPos >= 40) {
-                    newPos = newPos % 40;
-                    player.money += 200; // GO Salary
-                }
-                player.position = newPos;
-                updateTokenPosition(player);
-                
-                const landedSquare = boardMap[newPos];
-                let msg = `Rolled ${roll}. Landed on ${landedSquare.name}.`;
+        function performRoll(pId) {
+            const p = gameState.players[pId];
+            const d1 = Math.ceil(Math.random()*6);
+            const d2 = Math.ceil(Math.random()*6);
+            const roll = d1 + d2;
+            
+            hostLog(`${p.name} rolled ${d1} + ${d2} = ${roll}`);
+            
+            // Move Logic
+            p.position += roll;
+            if(p.position >= 40) {
+                p.position -= 40;
+                p.money += 200; // GO Salary
+            }
 
-                // Logic: Encounter
-                if (landedSquare.type === 'prop') {
-                    if (landedSquare.owner === null) {
-                        // Offer to buy
-                        if (player.money >= landedSquare.cost) {
-                            gameState.waitingForAction = true;
-                            gameState.currentProperty = newPos;
-                            // Prompt player specifically
-                            connections[pIndex].send({
-                                type: 'PROMPT_BUY',
-                                property: landedSquare
-                            });
-                            msg += " Buying option sent...";
-                        } else {
-                            msg += " Can't afford.";
-                            endTurn();
-                        }
-                    } else if (landedSquare.owner !== player.id) {
-                        // Pay rent
-                        const rent = Math.floor(landedSquare.cost * 0.1); // Simple 10% rent rule
-                        player.money -= rent;
-                        gameState.players[landedSquare.owner].money += rent;
-                        msg += ` Paid $${rent} rent.`;
-                        endTurn();
-                    } else {
-                        endTurn();
-                    }
-                } else if (landedSquare.type === 'tax') {
-                    player.money -= landedSquare.cost;
-                    msg += ` Paid tax.`;
-                    endTurn();
-                } else if (landedSquare.type === 'gotojail') {
-                    player.position = 10; // Jail
-                    updateTokenPosition(player);
-                    msg += " Sent to Jail.";
-                    endTurn();
+            updateTokenPos(p);
+            
+            // Evaluate Landing
+            setTimeout(() => {
+                evaluateSquare(pId, p.position);
+            }, 600); // Small delay for visual update
+            
+            // We temporarily send an update so the user sees the roll result
+            broadcastGameState(`${p.name} rolled ${roll}`);
+        }
+
+        function evaluateSquare(pId, pos) {
+            const p = gameState.players[pId];
+            const sq = boardMap[pos];
+            let msg = `Landed on ${sq.name}`;
+
+            // 1. Unowned Property
+            if(sq.type === 'prop' && sq.owner === null) {
+                if(p.money >= sq.price) {
+                    gameState.turnPhase = 'DECIDING';
+                    gameState.pendingPropertyIndex = pos;
+                    broadcastGameState(`Option to buy ${sq.name} for $${sq.price}`);
+                    return; // Stop here, wait for input
                 } else {
-                    endTurn();
+                    msg += " (Can't afford)";
+                    // Auto pass
                 }
-
-                broadcastState(msg);
-
-            } else if (action.type === 'BUY') {
-                // Confirm buy
-                if (!gameState.waitingForAction) return;
-                const propIndex = gameState.currentProperty;
-                const prop = boardMap[propIndex];
-                
-                player.money -= prop.cost;
-                prop.owner = player.id;
-                
-                gameState.waitingForAction = false;
-                gameState.currentProperty = null;
-                broadcastState(`${player.name} bought ${prop.name}!`);
-                endTurn();
-
-            } else if (action.type === 'PASS') {
-                gameState.waitingForAction = false;
-                gameState.currentProperty = null;
-                broadcastState(`${player.name} passed.`);
-                endTurn();
             }
+            // 2. Owned Property
+            else if(sq.type === 'prop' && sq.owner !== null && sq.owner !== pId) {
+                const owner = gameState.players[sq.owner];
+                const rent = sq.rent || Math.floor(sq.price / 10);
+                p.money -= rent;
+                owner.money += rent;
+                msg += `. Paid $${rent} rent to ${owner.name}.`;
+            }
+            // 3. Tax
+            else if(sq.type === 'tax') {
+                p.money -= sq.cost;
+                msg += `. Paid $${sq.cost} tax.`;
+            }
+            // 4. Go To Jail
+            else if(sq.type === 'gotojail') {
+                p.position = 10;
+                p.jailed = true;
+                updateTokenPos(p);
+                msg += `. Sent to Jail!`;
+            }
+
+            // End Turn Logic
+            broadcastGameState(msg);
+            setTimeout(nextTurn, 2000);
         }
 
-        function endTurn() {
-            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-            broadcastState(`Turn: ${gameState.players[gameState.currentPlayerIndex].name}`);
+        function performBuy(pId) {
+            const p = gameState.players[pId];
+            const sqIndex = gameState.pendingPropertyIndex;
+            const sq = boardMap[sqIndex];
+
+            if(p.money >= sq.price) {
+                p.money -= sq.price;
+                sq.owner = pId;
+                addOwnerMarker(sqIndex, p.color);
+                broadcastGameState(`${p.name} bought ${sq.name}!`);
+            }
+            gameState.pendingPropertyIndex = null;
+            setTimeout(nextTurn, 1500);
         }
 
-        function broadcastState(logMsg) {
+        function performPass(pId) {
+            gameState.pendingPropertyIndex = null;
+            broadcastGameState(`${gameState.players[pId].name} passed.`);
+            setTimeout(nextTurn, 1000);
+        }
+
+        function nextTurn() {
+            gameState.turnIndex = (gameState.turnIndex + 1) % gameState.players.length;
+            gameState.turnPhase = 'ROLLING';
+            const nextP = gameState.players[gameState.turnIndex];
+            broadcastGameState(`${nextP.name}'s Turn`);
+        }
+
+        function addOwnerMarker(sqIndex, colorClass) {
+            // Visual indicator that property is owned
+            const sq = boardMap[sqIndex];
+            const marker = document.createElement('div');
+            marker.className = `owner-marker ${colorClass}`;
+            marker.style.top = sq.top + '%';
+            marker.style.left = sq.left + '%';
+            document.getElementById('board-wrapper').appendChild(marker);
+        }
+
+        function broadcastGameState(logMsg) {
             // Update Host UI
-            document.getElementById('turn-indicator').innerText = logMsg;
-            if(gameState.gameStarted) {
-                document.getElementById('turn-indicator').style.color = gameState.players[gameState.currentPlayerIndex].color.replace('p-', '');
-            }
+            document.getElementById('current-action-display').innerText = logMsg;
 
-            // Send full state object to all clients
-            // We map board ownership separately because 'boardMap' isn't sent every time, just updates
-            const propertyOwners = boardMap.map((sq, i) => sq.owner !== undefined ? { index: i, owner: sq.owner } : null).filter(x => x);
-
-            const payload = {
-                type: 'UPDATE',
+            // Prepare packet
+            const statePacket = {
+                type: 'STATE_UPDATE',
                 players: gameState.players,
-                turnIndex: gameState.currentPlayerIndex,
+                turnIndex: gameState.turnIndex,
+                turnPhase: gameState.turnPhase,
+                pendingProp: gameState.pendingPropertyIndex !== null ? boardMap[gameState.pendingPropertyIndex] : null,
                 log: logMsg
             };
 
-            connections.forEach(conn => conn.send(payload));
+            // Send to all
+            Object.values(connections).forEach(conn => {
+                if(conn.open) conn.send(statePacket);
+            });
         }
 
 
-        // --- PLAYER LOGIC ---
+        // --- CLIENT (PLAYER) LOGIC ---
+
         function initPlayer() {
             const code = document.getElementById('join-code').value.toUpperCase();
-            if (code.length !== 4) { alert("Invalid Code"); return; }
-            
-            myRole = 'PLAYER';
-            switchScreen('controller-screen');
-            
-            peer = new Peer(); // Auto ID
-            
+            if(code.length !== 4) return alert("Enter 4-digit code");
+
+            peer = new Peer();
             peer.on('open', () => {
                 hostConn = peer.connect(APP_PREFIX + code);
-                setupClientConnection();
+                setupClient();
+            });
+            peer.on('error', err => {
+                alert("Could not find game. Check code.");
+            });
+        }
+
+        function setupClient() {
+            hostConn.on('open', () => {
+                switchScreen('controller-screen');
+                document.getElementById('log-area').innerText = "Connected! Waiting for host...";
+            });
+
+            hostConn.on('data', data => {
+                if(data.type === 'WELCOME') {
+                    myId = data.id;
+                    document.getElementById('c-player-name').innerText = data.name;
+                    document.getElementById('c-player-name').style.color = getComputedStyle(document.body).getPropertyValue(`--${data.color}`) || (data.color === 'p-0' ? '#e74c3c' : data.color === 'p-1' ? '#3498db' : '#2ecc71');
+                }
+                else if(data.type === 'STATE_UPDATE') {
+                    updateClientUI(data);
+                }
             });
             
-            peer.on('error', (err) => {
-                alert("Connection Failed. Check code.");
-                switchScreen('landing-screen');
-            });
+            hostConn.on('close', () => alert("Host disconnected"));
         }
 
-        function setupClientConnection() {
-            hostConn.on('open', () => {
-                document.getElementById('c-info').innerText = "Connected! Waiting for host...";
-            });
+        function updateClientUI(state) {
+            // 1. Update Money / Log
+            const me = state.players.find(p => p.id === myId);
+            if(me) document.getElementById('c-balance').innerText = `$${me.money}`;
+            
+            document.getElementById('log-area').innerText = state.log; // Replace log with latest status
+            
+            // 2. Button Visibility Logic
+            const btnRoll = document.getElementById('btn-roll');
+            const btnBuy = document.getElementById('btn-buy');
+            const btnPass = document.getElementById('btn-pass');
+            const msgWait = document.getElementById('msg-waiting');
 
-            hostConn.on('data', (data) => {
-                if (data.type === 'WELCOME') {
-                    myPlayerId = data.player.id;
-                    document.getElementById('c-player-name').innerText = data.player.name;
-                    document.getElementById('c-player-name').style.color = data.player.color === 'p-red' ? '#e74c3c' : 
-                                                                         data.player.color === 'p-blue' ? '#3498db' :
-                                                                         data.player.color === 'p-green' ? '#2ecc71' : '#f1c40f';
+            // Hide all first
+            btnRoll.style.display = 'none';
+            btnBuy.style.display = 'none';
+            btnPass.style.display = 'none';
+            msgWait.style.display = 'none';
+
+            const isMyTurn = (state.turnIndex === myId);
+
+            if(isMyTurn) {
+                if(state.turnPhase === 'ROLLING') {
+                    btnRoll.style.display = 'block';
+                } 
+                else if(state.turnPhase === 'DECIDING') {
+                    btnBuy.style.display = 'block';
+                    btnPass.style.display = 'block';
+                    if(state.pendingProp) {
+                        btnBuy.innerText = `BUY ${state.pendingProp.name} ($${state.pendingProp.price})`;
+                    }
                 }
-                
-                if (data.type === 'UPDATE') {
-                    updatePlayerUI(data);
-                }
-
-                if (data.type === 'PROMPT_BUY') {
-                    // Enable Buy/Pass Buttons
-                    document.getElementById('btn-roll').style.display = 'none';
-                    document.getElementById('btn-buy').style.display = 'block';
-                    document.getElementById('btn-pass').style.display = 'block';
-                    
-                    document.getElementById('btn-buy').innerText = `BUY ${data.property.name} ($${data.property.cost})`;
-                    document.getElementById('btn-buy').className = 'control-btn active-turn';
-                    document.getElementById('btn-pass').className = 'control-btn active-turn';
-                }
-            });
-        }
-
-        function updatePlayerUI(state) {
-            // Reset buttons
-            document.getElementById('btn-roll').style.display = 'block';
-            document.getElementById('btn-buy').style.display = 'none';
-            document.getElementById('btn-pass').style.display = 'none';
-            document.getElementById('btn-roll').className = 'control-btn'; // remove active
-
-            // Update Money
-            const me = state.players.find(p => p.id === myPlayerId);
-            if (me) document.getElementById('money-display').innerText = "$" + me.money;
-
-            // Update Log
-            document.getElementById('log-area').innerText = state.log;
-            document.getElementById('c-info').innerText = state.log;
-
-            // Check Turn
-            if (state.turnIndex === myPlayerId) {
-                document.getElementById('c-info').innerText = "IT'S YOUR TURN!";
-                document.getElementById('btn-roll').className = 'control-btn active-turn';
+            } else {
+                msgWait.style.display = 'block';
+                msgWait.innerText = `${state.players[state.turnIndex].name}'s Turn`;
             }
         }
 
-        function sendAction(actType) {
-            if (hostConn) {
-                hostConn.send({ type: actType });
-                // optimistic UI update: disable buttons instantly to prevent double click
-                if (actType === 'ROLL' || actType === 'BUY' || actType === 'PASS') {
-                    document.getElementById('btn-roll').className = 'control-btn';
-                    document.getElementById('btn-buy').className = 'control-btn';
-                    document.getElementById('btn-pass').className = 'control-btn';
-                }
+        function sendAction(type) {
+            if(hostConn && hostConn.open) {
+                hostConn.send({ type: type });
+                // Optimistic UI hide
+                document.querySelectorAll('.control-btn').forEach(b => b.style.display = 'none');
             }
         }
 
