@@ -58,7 +58,6 @@
         .lobby-title { font-size: 1.8rem; margin-bottom: 20px; color: var(--accent); border-bottom: 1px solid #444; padding-bottom: 15px; }
         
         #lobby-code { font-size: 6rem; font-weight: 900; letter-spacing: 10px; color: white; text-align: center; margin: 20px 0; text-shadow: 0 0 20px var(--primary); }
-        #loading-msg { color: #f1c40f; margin-top: 10px; display:none; }
 
         .rule-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; }
         .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
@@ -71,7 +70,7 @@
         /* --- 3. HOST BOARD --- */
         #host-screen { flex-direction: row; position: relative; background: #111; }
         #board-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; }
-        #board-wrapper { height: 95vh; width: 95vh; background-image: url('monopoly_board.png'); background-color: #CCE6C2; background-size: cover; border-radius: 4px; box-shadow: 0 0 80px rgba(0,0,0,0.9); position: relative; }
+        #board-wrapper { height: 95vh; width: 95vh; background-image: url('monopoly_board.png'); background-size: cover; border-radius: 4px; box-shadow: 0 0 80px rgba(0,0,0,0.9); position: relative; }
         #host-sidebar { width: var(--sidebar-width); background: #222; display: flex; flex-direction: column; padding: 25px; border-left: 2px solid #333; z-index: 20; }
         
         /* OVERLAYS */
@@ -127,7 +126,6 @@
         <h1>Monopoly</h1>
         <button class="btn btn-green" onclick="initHost()">HOST GAME</button>
         <button class="btn btn-blue" onclick="showJoinScreen()">JOIN GAME</button>
-        <div id="loading-msg">Connecting to server...</div>
     </div>
 
     <div id="join-setup-screen" class="screen">
@@ -227,19 +225,9 @@
 
 <script>
     // --- CONFIGURATION ---
-    const APP_ID = "poly-lob-v2-";
+    // Changed to alphanumeric to avoid PeerJS cloud validation issues
+    const APP_ID = "polylobv2"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    
-    // ** CRITICAL FIX: Public STUN servers to allow connection through firewalls/routers **
-    const PEER_CONFIG = {
-        debug: 2,
-        config: {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        }
-    };
 
     // --- ACCURATE CARDS ---
     const chanceCards = [
@@ -347,7 +335,11 @@
 
     // --- CLIENT JOIN LOGIC ---
     function showJoinScreen() { switchScreen('join-setup-screen'); }
-    function backToLanding() { switchScreen('landing-screen'); }
+    function backToLanding() { 
+        if(peer) peer.destroy(); 
+        if(hostConn) hostConn.close();
+        switchScreen('landing-screen'); 
+    }
     
     function connectToHost() {
         const code = document.getElementById('join-code').value.toUpperCase();
@@ -357,18 +349,28 @@
         
         switchScreen('client-screen');
         document.getElementById('c-name').innerText = nick;
+        document.getElementById('c-status').innerText = "Connecting to Room " + code + "...";
 
-        // Clean up old peer if exists
-        if(peer) peer.destroy();
+        // Create Peer without ID (Client)
+        peer = new Peer();
 
-        // 1. Initialize Client with config
-        peer = new Peer(null, PEER_CONFIG);
-        
+        // **FIX 1: Handle Errors on Client Peer (e.g. Host not found)**
+        peer.on('error', (err) => {
+            console.error("Peer Error:", err);
+            if(err.type === 'peer-unavailable') {
+                alert(`Room Code ${code} not found!`);
+                backToLanding();
+            } else {
+                alert("Connection Error: " + err.type);
+                backToLanding();
+            }
+        });
+
         peer.on('open', (id) => {
-            // 2. Connect to Host
+            // **FIX 2: Add reliable:true and serialization options**
             hostConn = peer.connect(APP_ID + code, { 
                 metadata: { name: nick },
-                serialization: 'json' // FIX: Ensure reliable data format
+                reliable: true
             });
 
             hostConn.on('open', () => {
@@ -379,101 +381,83 @@
             
             hostConn.on('close', () => {
                 alert("Disconnected from Host");
-                location.reload();
+                backToLanding();
             });
 
             hostConn.on('error', err => { 
-                console.error(err);
-                alert("Connection Error: " + err); 
+                console.error("Conn Error:", err);
+                alert("Connection Lost"); 
                 backToLanding(); 
             });
-        });
-
-        peer.on('error', (err) => {
-            alert("Network Error: " + err.type);
-            backToLanding();
         });
     }
 
     // --- HOST LOGIC ---
     function initHost() {
-        document.getElementById('loading-msg').style.display = 'block';
-        tryRegisterHost();
-    }
-
-    function tryRegisterHost() {
-        if(peer) peer.destroy();
-        
         const code = generateCode();
+        switchScreen('lobby-screen');
+        document.getElementById('lobby-code').innerText = code;
         
-        // 1. Initialize Host with ID and Config
-        peer = new Peer(APP_ID + code, PEER_CONFIG);
+        // **FIX 3: Host Initialization**
+        // Construct unique ID safely
+        const hostId = APP_ID + code;
+        peer = new Peer(hostId);
+
+        peer.on('error', (err) => {
+            console.error("Host Peer Error:", err);
+            if(err.type === 'unavailable-id') {
+                // Rare collision or zombie session, retry
+                peer.destroy();
+                setTimeout(initHost, 500);
+            } else {
+                alert("Host Error: " + err.type);
+                backToLanding();
+            }
+        });
 
         peer.on('open', (id) => {
-            // Success - Show Lobby
-            document.getElementById('loading-msg').style.display = 'none';
-            switchScreen('lobby-screen');
-            document.getElementById('lobby-code').innerText = code;
+            console.log("Host ready on ID:", id);
         });
 
         peer.on('connection', handleHostConn);
-
-        peer.on('error', (err) => {
-            console.log("Host Error", err);
-            // Retry if ID is taken
-            if(err.type === 'unavailable-id') {
-                console.log("Code taken, retrying...");
-                tryRegisterHost();
-            } else {
-                alert("Host Error: " + err.type);
-                document.getElementById('loading-msg').style.display = 'none';
-            }
-        });
     }
 
     function handleHostConn(conn) {
-        if(gameState.gameStarted) { 
-            conn.close(); 
-            return; 
-        }
+        if(gameState.gameStarted) { conn.close(); return; }
         
+        const pId = gameState.players.length;
+        if(pId >= 4) { conn.close(); return; } // Max 4 players
+
+        // Use Metadata Name or Fallback
+        const pName = (conn.metadata && conn.metadata.name) ? conn.metadata.name : "Player " + (pId+1);
+
+        const newPlayer = {
+            id: pId, 
+            name: pName,
+            colorClass: ["p-red","p-blue","p-green","p-yellow"][pId],
+            money: 1500,
+            position: 0,
+            jailed: false,
+            getOutCard: 0
+        };
+
+        gameState.players.push(newPlayer);
+        connections[pId] = conn;
+
+        renderLobbyList();
+
         conn.on('open', () => {
-            const pId = gameState.players.length;
-            if(pId >= 4) { conn.close(); return; } 
-
-            // Use Metadata Name or Fallback
-            const pName = (conn.metadata && conn.metadata.name) ? conn.metadata.name : "Player " + (pId+1);
-
-            const newPlayer = {
-                id: pId, 
-                name: pName,
-                colorClass: ["p-red","p-blue","p-green","p-yellow"][pId],
-                money: 1500,
-                position: 0,
-                jailed: false,
-                getOutCard: 0
-            };
-
-            gameState.players.push(newPlayer);
-            connections[pId] = conn;
-
-            renderLobbyList();
-            
             conn.send({ type: 'WELCOME', player: newPlayer });
             conn.send({ type: 'LOBBY_UPDATE', players: gameState.players, rules: gameState.rules });
         });
-
-        conn.on('data', data => handleHostAction(findPlayerIdByConn(conn), data));
+        
+        conn.on('data', data => handleHostAction(pId, data));
+        
         conn.on('close', () => {
-            // Handle disconnect if needed
+            // Optional: Handle player disconnect in lobby
+            // For simplicity, we just leave them in state but they can't reconnect to same player object easily without complexity
+            console.log(`Player ${pId} disconnected`);
         });
-    }
-
-    function findPlayerIdByConn(conn) {
-        for(let id in connections) {
-            if(connections[id] === conn) return parseInt(id);
-        }
-        return -1;
     }
 
     function renderLobbyList() {
@@ -483,10 +467,14 @@
     function getColorHex(cls) { if(cls==='p-red') return '#e74c3c'; if(cls==='p-blue') return '#3498db'; if(cls==='p-green') return '#2ecc71'; return '#f1c40f'; }
 
     function startGame() {
+        if(gameState.players.length < 1) return alert("Need at least 1 player!"); // Debugging allows 1, real game usually 2+
+
         // Capture Rules
         gameState.rules.pot = document.getElementById('rule-pot').checked;
         gameState.rules.goDouble = document.getElementById('rule-go').checked;
         gameState.rules.snake = document.getElementById('rule-snake').checked;
+        // In UI: "No Rent in Jail". Checked = No Rent (active). Unchecked = Rent (inactive).
+        // Logic: if checked, jailRent = false.
         gameState.rules.jailRent = !document.getElementById('rule-jail').checked;
 
         gameState.gameStarted = true;
@@ -501,7 +489,7 @@
     }
 
     function handleHostAction(pId, action) {
-        if(pId === -1 || pId !== gameState.turnIndex) return;
+        if(pId !== gameState.turnIndex) return;
         const p = gameState.players[pId];
 
         if(action.type === 'ROLL' && gameState.turnPhase === 'ROLLING') {
@@ -544,6 +532,7 @@
 
     function movePlayer(p, steps) {
         let landed = false;
+        let loops = 0;
         
         if(steps < 0) {
             p.position += steps;
@@ -706,18 +695,31 @@
         const s = document.createElement('div'); 
         s.className = `owner-strip ${color}`;
         
+        // Determine Rotation/Placement based on side
         let rot = 0;
         let t = sq.top; 
         let l = sq.left;
 
         if (idx > 0 && idx < 10) { 
-            rot = 0; t = 97; l = sq.left;
+            // Bottom Row
+            rot = 0; 
+            t = 97; 
+            l = sq.left;
         } else if (idx > 10 && idx < 20) {
-            rot = 90; t = sq.top; l = 3;
+            // Left Row
+            rot = 90;
+            t = sq.top;
+            l = 3; 
         } else if (idx > 20 && idx < 30) {
-            rot = 0; t = 3; l = sq.left;
+            // Top Row
+            rot = 0;
+            t = 3;
+            l = sq.left;
         } else if (idx > 30 && idx < 40) {
-            rot = 90; t = sq.top; l = 97;
+            // Right Row
+            rot = 90;
+            t = sq.top;
+            l = 97;
         }
 
         s.style.top = t + '%'; 
@@ -762,9 +764,7 @@
             activeCard: gameState.activeCard,
             pendingProp: gameState.pendingProp !== null ? boardMap[gameState.pendingProp] : null
         };
-        Object.values(connections).forEach(c => {
-             if(c.open) c.send(payload);
-        });
+        Object.values(connections).forEach(c => c.send(payload));
     }
 
     // --- CLIENT ---
@@ -774,7 +774,7 @@
             myId = data.player.id;
         }
         else if(data.type === 'LOBBY_UPDATE') {
-            document.getElementById('c-status').innerText = "Host is configuring rules...";
+            document.getElementById('c-status').innerText = "Waiting for Host to start...";
         }
         else if(data.type === 'STATE') {
             updateClientUI(data);
@@ -829,7 +829,7 @@
         document.getElementById('r-price').innerText = `$${prop.price}`;
     }
 
-    function send(type) { hostConn.send({type:type}); }
+    function send(type) { if(hostConn && hostConn.open) hostConn.send({type:type}); }
 
 </script>
 </body>
