@@ -89,12 +89,14 @@
         /* BOARD ELEMENTS */
         .token { position: absolute; width: 3.5%; height: 3.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 20; box-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
-        /* OWNERSHIP BARS */
+        /* OWNERSHIP BARS (Adjusted) */
         .owner-bar { position: absolute; z-index: 5; transition: all 0.3s; }
-        .bar-bottom { height: 1.5%; width: 7.5%; bottom: 0; transform: translateX(-50%); }
-        .bar-left   { height: 7.5%; width: 1.5%; left: 0; top: auto; transform: translateY(-50%); }
-        .bar-top    { height: 1.5%; width: 7.5%; top: 0; bottom: auto; transform: translateX(-50%); }
-        .bar-right  { height: 7.5%; width: 1.5%; right: 0; left: auto; transform: translateY(-50%); }
+        
+        /* Thinner (0.5%) and wider (8.15% to fit exactly) */
+        .bar-bottom { height: 0.8%; width: 8.2%; bottom: 0; transform: translateX(-50%); }
+        .bar-left   { height: 8.2%; width: 0.8%; left: 0; top: auto; transform: translateY(-50%); }
+        .bar-top    { height: 0.8%; width: 8.2%; top: 0; bottom: auto; transform: translateX(-50%); }
+        .bar-right  { height: 8.2%; width: 0.8%; right: 0; left: auto; transform: translateY(-50%); }
 
         .pot-display { background: #27ae60; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
 
@@ -242,19 +244,17 @@
 
 <script>
     // --- CONFIGURATION ---
-    const APP_ID = "poly-lob-v2-"; // Changed prefix to avoid old collisions
+    const APP_ID = "poly-lob-v3-"; // New prefix to avoid caching issues
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     
-    // --- PEER CONFIG (The "Fix") ---
-    // Explicitly using Google's public STUN servers ensures connections work 
-    // across different Wi-Fi/Cellular networks (NAT Traversal).
+    // --- PEER CONFIG ---
+    // Includes Google STUN servers for reliable mobile connection
     const PEER_CONFIG = {
         debug: 1,
         config: {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' }
+                { urls: 'stun:stun1.l.google.com:19302' }
             ]
         }
     };
@@ -297,8 +297,11 @@
         { text: "You have won second prize in a beauty contest. Collect $10", action: "money", amount: 10 }
     ];
 
-    // --- REFINED BOARD DATA (Exact Geometric Centers) ---
-    const POS = [93.75, 83.33, 75.00, 66.67, 58.33, 50.00, 41.67, 33.33, 25.00, 16.67, 6.25];
+    // --- REFINED BOARD DATA (Calibrated to Image) ---
+    // Corner Centers: 93.5% and 6.5%
+    // 9 Properties evenly distributed between (8.2% each)
+    // Centers: 93.5, 82.9, 74.7, 66.5, 58.3, 50.1, 41.9, 33.7, 25.5, 17.3, 6.5
+    const POS = [93.5, 82.9, 74.7, 66.5, 58.3, 50.1, 41.9, 33.7, 25.5, 17.3, 6.5];
     
     const boardMap = [
         { name: "GO", type: "go", top: POS[0], left: POS[0], side: 'bottom' },
@@ -382,7 +385,7 @@
             if(conn && conn.open) {
                 conn.send({type: 'PING'});
             }
-        }, 2000); // Send keep-alive every 2s to keep mobile connection awake
+        }, 2000); 
     }
 
     // --- UI LOGIC ---
