@@ -89,14 +89,17 @@
         /* BOARD ELEMENTS */
         .token { position: absolute; width: 3.5%; height: 3.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 20; box-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
-        /* OWNERSHIP BARS (Adjusted) */
+        /* OWNERSHIP BARS (FIXED) */
         .owner-bar { position: absolute; z-index: 5; transition: all 0.3s; }
         
-        /* Thinner (0.5%) and wider (8.15% to fit exactly) */
-        .bar-bottom { height: 0.8%; width: 8.2%; bottom: 0; transform: translateX(-50%); }
-        .bar-left   { height: 8.2%; width: 0.8%; left: 0; top: auto; transform: translateY(-50%); }
-        .bar-top    { height: 0.8%; width: 8.2%; top: 0; bottom: auto; transform: translateX(-50%); }
-        .bar-right  { height: 8.2%; width: 0.8%; right: 0; left: auto; transform: translateY(-50%); }
+        /* - Space width is ~8.2%. Setting bar to 7.6% ensures it fits INSIDE the black dividers.
+           - Height is 0.6% to be thin enough to show the price.
+           - translateX(-50%) keeps it centered on the coordinate.
+        */
+        .bar-bottom { height: 0.6%; width: 7.6%; bottom: 0; transform: translateX(-50%); }
+        .bar-left   { height: 7.6%; width: 0.6%; left: 0; top: auto; transform: translateY(-50%); }
+        .bar-top    { height: 0.6%; width: 7.6%; top: 0; bottom: auto; transform: translateX(-50%); }
+        .bar-right  { height: 7.6%; width: 0.6%; right: 0; left: auto; transform: translateY(-50%); }
 
         .pot-display { background: #27ae60; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
 
@@ -244,11 +247,11 @@
 
 <script>
     // --- CONFIGURATION ---
-    const APP_ID = "poly-lob-v3-"; // New prefix to avoid caching issues
+    const APP_ID = "poly-lob-v4-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     
     // --- PEER CONFIG ---
-    // Includes Google STUN servers for reliable mobile connection
+    // Google STUN servers for reliable mobile connection
     const PEER_CONFIG = {
         debug: 1,
         config: {
@@ -297,11 +300,12 @@
         { text: "You have won second prize in a beauty contest. Collect $10", action: "money", amount: 10 }
     ];
 
-    // --- REFINED BOARD DATA (Calibrated to Image) ---
-    // Corner Centers: 93.5% and 6.5%
-    // 9 Properties evenly distributed between (8.2% each)
-    // Centers: 93.5, 82.9, 74.7, 66.5, 58.3, 50.1, 41.9, 33.7, 25.5, 17.3, 6.5
-    const POS = [93.5, 82.9, 74.7, 66.5, 58.3, 50.1, 41.9, 33.7, 25.5, 17.3, 6.5];
+    // --- REFINED BOARD DATA (High-Precision Centers) ---
+    // Corners: 13% width -> Center at 6.5% / 93.5%
+    // 9 Properties: 74% width total -> 8.22% per property
+    // Centers: 17.11, 25.33, 33.55, 41.77, 50.00, 58.22, 66.44, 74.66, 82.88
+    
+    const POS = [93.5, 82.88, 74.66, 66.44, 58.22, 50.00, 41.77, 33.55, 25.33, 17.11, 6.5];
     
     const boardMap = [
         { name: "GO", type: "go", top: POS[0], left: POS[0], side: 'bottom' },
