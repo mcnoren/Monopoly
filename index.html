@@ -121,10 +121,12 @@
         .btn-action:active { transform: translateY(4px); box-shadow: none; }
 
         /* --- NEW: CENTRAL INVENTORY AREA --- */
-        #client-main-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; width: 100%; }
+        #client-main-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; position: relative; width: 100%; overflow:hidden; }
         
         #inventory-grid { 
-            display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; 
+            display: flex; flex-wrap: wrap; gap: 15px; 
+            justify-content: flex-start; /* UPDATED: Start from top left */
+            align-content: flex-start;
             width: 100%; max-width: 400px; padding: 10px; overflow-y: auto;
         }
 
@@ -136,7 +138,6 @@
             display: flex; flex-direction: column;
         }
         .card-stack:active { transform: scale(0.95); }
-        /* Pseudo-elements for "Stack" effect */
         .card-stack::before {
             content: ""; position: absolute; top: -3px; left: 3px; width: 100%; height: 100%;
             background: white; border: 1px solid #999; border-radius: 6px; z-index: -1;
@@ -146,23 +147,23 @@
             background: white; border: 1px solid #999; border-radius: 6px; z-index: -2;
         }
         
-        .stack-header { height: 30px; border-radius: 5px 5px 0 0; border-bottom: 2px solid black; }
-        .stack-body { flex-grow: 1; display: flex; justify-content: center; align-items: center; color: black; font-weight: bold; font-size: 1.5rem; }
-        .stack-label { font-size: 0.7rem; text-align: center; color: #555; padding-bottom: 5px; text-transform: uppercase;}
+        .stack-header { height: 25px; border-radius: 5px 5px 0 0; border-bottom: 2px solid black; }
+        .stack-body { flex-grow: 1; display: flex; flex-direction: column; padding: 5px; overflow: hidden; }
+        .prop-name-mini { font-size: 0.65rem; color: black; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; border-bottom: 1px solid #eee; }
 
         /* SWIPE MODAL */
         #swipe-overlay {
             position: absolute; top:0; left:0; width:100%; height:100%; 
-            background: rgba(0,0,0,0.95); z-index: 500; display: none;
-            flex-direction: column;
+            background: rgba(0,0,0,0.85); z-index: 500; display: none;
+            flex-direction: column; backdrop-filter: blur(5px);
         }
-        .swipe-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .swipe-header { padding: 20px; display: flex; justify-content: center; align-items: center; color: white; pointer-events: none; }
         .swipe-container {
             flex-grow: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
             align-items: center; padding: 0 20px; gap: 20px;
         }
         .swipe-item {
-            scroll-snap-align: center; flex: 0 0 100%; display: flex; justify-content: center;
+            scroll-snap-align: center; flex: 0 0 100%; display: flex; justify-content: center; pointer-events: auto;
         }
 
         /* ERROR TOAST */
@@ -262,13 +263,12 @@
     </div>
 
     <div id="client-screen" class="screen">
-        <div id="swipe-overlay">
+        <div id="swipe-overlay" onclick="closeSwipe(event)">
             <div class="swipe-header">
                 <h2 style="margin:0">MY PROPERTIES</h2>
-                <button class="btn btn-red" style="padding: 5px 15px;" onclick="closeSwipe()">X</button>
             </div>
             <div id="swipe-container" class="swipe-container"></div>
-            <div style="text-align:center; padding:10px; color:#aaa;">Swipe to view</div>
+            <div style="text-align:center; padding:10px; color:#aaa; pointer-events:none;">Swipe to view • Tap outside to close</div>
         </div>
 
         <div id="client-dice-overlay" class="overlay-layer" style="z-index: 300; display:none;">
@@ -323,7 +323,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v11-"; 
+    const APP_ID = "poly-lob-v12-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     
     const PEER_CONFIG = {
@@ -846,10 +846,7 @@
     function broadcastState(msg) {
         if(msg) log(msg);
         renderGameList();
-        
-        // Include ownership data for clients
         const propData = boardMap.map(s => ({owner: s.owner, houses: s.houses}));
-        
         const payload = {
             type: 'STATE',
             players: gameState.players,
@@ -884,9 +881,30 @@
     function handleClientData(data) {
         if(data.type === 'PING') return;
         if(data.type === 'DICE_ANIM') {
-            const el = document.getElementById('dice-container-client');
-            el.innerHTML = data.html;
-            document.getElementById('client-dice-overlay').style.display = 'flex';
+            // ONLY SHOW IF IT IS MY TURN (Checking if active)
+            // But we don't have local state of turn index in this scope easily without storing it
+            // Rely on the visual cue that it was just "YOUR TURN"
+            // Better: Host broadcasts turn index in STATE. We check if myId === state.turnIndex
+            // DICE_ANIM is separate. Let's cheat: show if client-screen is active
+            if(document.getElementById('client-screen').classList.contains('active')) {
+                 // Check if it was my turn using cached state? No, simply show. 
+                 // Wait, user asked "only show if it is your roll". 
+                 // We need to check if myId == currentTurnIndex. 
+                 // We can get currentTurnIndex from stored client-side state variable if we expose it or passed in payload.
+                 // Simplest fix: Client hides it immediately if not their turn.
+                 // But DICE_ANIM packet doesn't have turn info.
+                 // We rely on previous STATE packet.
+                 // Let's assume the state is up to date.
+            }
+            // For now, I'll modify the host to ONLY send DICE_ANIM to the specific player? No, broadcast.
+            // Client side filter:
+            // Since we can't easily access the turn index inside this callback without global state...
+            // Let's use a global `amIActive` flag set in updateClientUI
+            if(window.amIActive) {
+                const el = document.getElementById('dice-container-client');
+                el.innerHTML = data.html;
+                document.getElementById('client-dice-overlay').style.display = 'flex';
+            }
             return;
         }
         if(data.type === 'HIDE_DICE') {
@@ -907,15 +925,15 @@
         const me = state.players.find(p => p.id === myId);
         document.getElementById('c-balance').innerText = `$${me.money}`;
         const isMyTurn = state.turnIndex === myId;
+        window.amIActive = isMyTurn; // Set global flag for dice filter
+
         const con = document.getElementById('c-controls');
         con.innerHTML = ''; 
         
-        // Hide specific overlays unless needed
         document.getElementById('deed-card').style.display = 'none';
         document.getElementById('client-overlay-card').style.display = 'none';
         document.getElementById('inventory-grid').style.display = 'none';
 
-        // Default: Show Inventory
         let showInventory = true;
 
         if(state.turnPhase === 'DECIDING' && isMyTurn) {
@@ -934,7 +952,6 @@
             document.getElementById('client-overlay-card').style.display = 'flex';
         }
         else if(isMyTurn) {
-            // My Turn but not Deciding/Ack -> Rolling
             document.getElementById('c-status').innerText = "YOUR TURN";
             if(state.turnPhase === 'ROLLING') {
                 if(me.jailed) {
@@ -957,16 +974,14 @@
         }
     }
 
-    // --- NEW INVENTORY LOGIC ---
+    // --- UPDATED INVENTORY LOGIC ---
     function renderInventory() {
         const container = document.getElementById('inventory-grid');
         container.innerHTML = '';
         
         const myProps = [];
-        // Map owned properties
         clientPropState.forEach((pState, index) => {
             if(pState.owner === myId) {
-                // Combine static board data with dynamic state (houses)
                 const staticData = boardMap[index];
                 myProps.push({...staticData, houses: pState.houses, originalIndex: index});
             }
@@ -977,34 +992,43 @@
             return;
         }
 
-        // Group by Color
         const groups = {};
         myProps.forEach(p => {
             if(!groups[p.group]) groups[p.group] = [];
             groups[p.group].push(p);
         });
 
-        // Create Stack Elements
-        for(const [group, props] of Object.entries(groups)) {
+        // Sort keys: Standard board order
+        const order = ['bg-brown','bg-lightblue','bg-pink','bg-orange','bg-red','bg-yellow','bg-green','bg-darkblue','bg-black','bg-gray'];
+        const sortedKeys = Object.keys(groups).sort((a,b) => {
+            return order.indexOf(a) - order.indexOf(b);
+        });
+
+        for(const group of sortedKeys) {
+            const props = groups[group];
+            
+            // Stack element
             const stack = document.createElement('div');
             stack.className = 'card-stack';
             stack.onclick = () => openSwipeModal(props);
             
-            // Stack Visuals
+            // Header (Color)
             const header = document.createElement('div');
-            header.className = `stack-header ${group}`; // Reuse bg-color classes
+            header.className = `stack-header ${group}`;
             
+            // Body (List names)
             const body = document.createElement('div');
             body.className = 'stack-body';
-            body.innerText = props.length; // Count
             
-            const label = document.createElement('div');
-            label.className = 'stack-label';
-            label.innerText = group.replace('bg-', '').toUpperCase(); // Label
+            props.forEach(p => {
+                const n = document.createElement('div');
+                n.className = 'prop-name-mini';
+                n.innerText = p.name;
+                body.appendChild(n);
+            });
 
             stack.appendChild(header);
             stack.appendChild(body);
-            stack.appendChild(label);
             container.appendChild(stack);
         }
     }
@@ -1017,23 +1041,17 @@
             const wrap = document.createElement('div');
             wrap.className = 'swipe-item';
             
-            // Create a deed card container
             const card = document.createElement('div');
             card.style.cssText = "background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;";
             
-            // Build inner HTML manually to allow for conditional highlighting
-            // We use renderDeed helper logic inside here
-            
-            // Header
-            let html = `<div class="deed-header ${p.group}">${p.name}</div><div class="deed-body"><div style="text-align:center; margin-bottom:10px;">Rent $${p.rent[0]}</div>`;
-            
-            // Rent Rows with Highlights
             const houseCount = p.houses || 0;
-            // Helper to check highlighting
             const hl = (idx) => (houseCount === idx ? 'rent-highlight' : '');
             
-            // If 0 houses, highlight base rent (handled crudely above or explicitly)
-            // Ideally highlighting row 0. We'll simplify:
+            let html = `<div class="deed-header ${p.group}">${p.name}</div><div class="deed-body">`;
+            
+            // Base Rent Highlight logic
+            let baseStyle = houseCount === 0 ? 'background-color:#f1c40f; font-weight:bold; border-radius:4px;' : '';
+            html += `<div style="text-align:center; margin-bottom:10px; ${baseStyle}">Rent $${p.rent[0]}</div>`;
             
             html += `<div class="rent-row ${hl(1)}"><span>1 House</span><span>$${p.rent[1]}</span></div>`;
             html += `<div class="rent-row ${hl(2)}"><span>2 Houses</span><span>$${p.rent[2]}</span></div>`;
@@ -1051,8 +1069,10 @@
         document.getElementById('swipe-overlay').style.display = 'flex';
     }
 
-    window.closeSwipe = function() {
-        document.getElementById('swipe-overlay').style.display = 'none';
+    window.closeSwipe = function(e) {
+        if(e.target.id === 'swipe-overlay') {
+            document.getElementById('swipe-overlay').style.display = 'none';
+        }
     }
 
     function renderDeed(prop, elementId) {
