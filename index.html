@@ -275,7 +275,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v14-"; 
+    const APP_ID = "poly-lob-v15-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
 
@@ -403,38 +403,39 @@
     function processAITurn() {
         const pId = gameState.turnIndex;
         const p = gameState.players[pId];
-        if (!p || !p.isAI) return;
-
-        // Trade response AI
-        if(gameState.activeTrade && gameState.activeTrade.to === pId) {
-            setTimeout(() => {
-                // AI Trade Evaluator: 
-                // Always accept if getting properties. 
-                // Always accept if money offered > money requested.
-                // Simple logic for now.
-                const offerValue = gameState.activeTrade.offer.money + (gameState.activeTrade.offer.props.length * 100);
-                const reqValue = gameState.activeTrade.req.money + (gameState.activeTrade.req.props.length * 100);
-                
-                if (offerValue >= reqValue) {
-                    handleHostAction(pId, {type: 'TRADE_ACCEPT'});
-                } else {
-                    handleHostAction(pId, {type: 'TRADE_DECLINE'});
-                }
-            }, 2000);
-            return;
+        // AI Logic runs if it's AI turn OR AI is responding to trade
+        if (p && p.isAI && gameState.turnIndex === pId) {
+            runAIGameLoop(pId, p);
         }
+    }
 
-        if(gameState.activeTrade) return; // Wait for other trade to resolve
+    function processAITradeResponse(targetId) {
+        const aiPlayer = gameState.players[targetId];
+        if(!aiPlayer || !aiPlayer.isAI) return;
+        
+        setTimeout(() => {
+            const trade = gameState.activeTrade;
+            if(trade && trade.to === targetId) {
+                // Simple AI: Accept if gaining money or properties (simplified)
+                const offerVal = trade.offer.money + (trade.offer.props.length * 150);
+                const reqVal = trade.req.money + (trade.req.props.length * 150);
+                
+                if(offerVal >= reqVal * 0.9) { // Accept if reasonable
+                    handleHostAction(targetId, {type: 'TRADE_ACCEPT'});
+                } else {
+                    handleHostAction(targetId, {type: 'TRADE_DECLINE'});
+                }
+            }
+        }, 2000);
+    }
+
+    function runAIGameLoop(pId, p) {
+        if (gameState.activeTrade) return; // Wait for trade
 
         setTimeout(() => {
             if (gameState.turnIndex !== pId) return;
             
-            // AI Turn Logic
-            if (gameState.turnPhase === 'IDLE' && !gameState.activeTrade) {
-                // AI could initiate trade here. For now, just end turn.
-                handleHostAction(pId, {type: 'END_TURN'});
-            }
-            else if (gameState.turnPhase === 'ROLLING') {
+            if (gameState.turnPhase === 'ROLLING') {
                 if (p.jailed && p.money >= 600) handleHostAction(pId, {type: 'PAY_JAIL'});
                 else handleHostAction(pId, {type: 'ROLL'});
             }
@@ -443,8 +444,14 @@
                 if (p.money >= sq.price) handleHostAction(pId, {type: 'BUY'});
                 else handleHostAction(pId, {type: 'PASS'});
             }
-            else if (gameState.turnPhase === 'ACKNOWLEDGING') handleHostAction(pId, {type: 'OK'});
-        }, 1500); 
+            else if (gameState.turnPhase === 'ACKNOWLEDGING') {
+                handleHostAction(pId, {type: 'OK'});
+            }
+            else if (gameState.turnPhase === 'IDLE') {
+                // AI done with turn
+                handleHostAction(pId, {type: 'END_TURN'});
+            }
+        }, 1500);
     }
 
     // --- HOST LOGIC ---
@@ -536,19 +543,23 @@
 
     function handleHostAction(pId, action) {
         if(action.type === 'PING') return;
+        // Allow trade actions from anyone involved
         if(pId !== gameState.turnIndex && action.type !== 'TRADE_ACCEPT' && action.type !== 'TRADE_DECLINE' && action.type !== 'TRADE_OFFER') return;
         const p = gameState.players[pId];
 
         if(action.type === 'TRADE_OFFER') {
             gameState.activeTrade = { from: pId, to: parseInt(action.target), offer: action.offer, req: action.req };
             broadcastState();
-            processAITurn(); // Trigger AI check if AI is target
+            // Check if target is AI
+            processAITradeResponse(gameState.activeTrade.to);
             return;
         }
         if(action.type === 'TRADE_DECLINE') {
             log("Trade Declined");
             gameState.activeTrade = null;
             broadcastState();
+            // If it was AI turn, resume
+            processAITurn();
             return;
         }
         if(action.type === 'TRADE_ACCEPT') {
@@ -566,6 +577,7 @@
             log("Trade Completed!");
             gameState.activeTrade = null;
             broadcastState();
+            processAITurn();
             return;
         }
 
@@ -753,11 +765,19 @@
         document.getElementById('board-wrapper').appendChild(d);
         updateToken(p);
     }
+    // Fixed Token Positioning (Corner Offsets)
+    const OFFSET_MAP = [
+        {x: -1.5, y: -1.5},
+        {x: 1.5, y: -1.5},
+        {x: -1.5, y: 1.5},
+        {x: 1.5, y: 1.5}
+    ];
     function updateToken(p) {
         const sq = boardMap[p.position];
         const el = document.getElementById(`tok-${p.id}`);
-        const rX = (Math.random()*1.5)-0.75; const rY = (Math.random()*1.5)-0.75;
-        el.style.top = (sq.top + rY) + '%'; el.style.left = (sq.left + rX) + '%';
+        const offset = OFFSET_MAP[p.id % 4];
+        el.style.top = (sq.top + offset.y) + '%'; 
+        el.style.left = (sq.left + offset.x) + '%';
     }
     function addOwnerBar(idx, color) {
         const sq = boardMap[idx];
@@ -1019,7 +1039,6 @@
         const groups = {};
         myProps.forEach(p => { if(!groups[p.group]) groups[p.group] = []; groups[p.group].push(p); });
 
-        // Sort order: Brown -> ... -> Blue -> Special
         const order = ['bg-brown','bg-lightblue','bg-pink','bg-orange','bg-red','bg-yellow','bg-green','bg-darkblue','bg-gray','bg-black']; 
         const sortedKeys = Object.keys(groups).sort((a,b) => {
             let ia = order.indexOf(a), ib = order.indexOf(b);
