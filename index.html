@@ -41,10 +41,12 @@
         /* --- 1. LANDING --- */
         #landing-screen { flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #2c3e50 0%, #000 100%); }
         #landing-screen h1 { font-size: 4rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 5px; }
-        .input-code { padding: 15px; font-size: 2rem; text-align: center; border-radius: 8px; border:none; width: 250px; text-transform: uppercase; letter-spacing: 4px; margin: 20px 0; }
+        
+        .input-std { padding: 15px; font-size: 1.5rem; text-align: center; border-radius: 8px; border:none; width: 280px; margin: 5px 0; display: block;}
+        .input-code { text-transform: uppercase; letter-spacing: 4px; font-weight: bold; }
         
         .menu-container { display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%; }
-        #join-flow { display: none; flex-direction: column; align-items: center; }
+        #join-flow { display: none; flex-direction: column; align-items: center; gap: 10px; }
 
         /* --- 2. LOBBY --- */
         #lobby-screen { flex-direction: column; align-items: center; padding: 40px; background: #222; }
@@ -52,7 +54,6 @@
         .lobby-panel { flex: 1; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; display: flex; flex-direction: column; }
         .lobby-title { font-size: 2rem; margin-bottom: 20px; color: var(--accent); border-bottom: 1px solid #444; padding-bottom: 10px; }
         
-        /* UPDATED: Large Code Style */
         .code-display { font-size: 4rem; color: white; font-weight: 900; vertical-align: middle; margin-left: 15px; letter-spacing: 2px; }
 
         .rule-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; }
@@ -66,7 +67,17 @@
         /* --- 3. HOST BOARD --- */
         #host-screen { flex-direction: row; position: relative; }
         #board-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #111; }
-        #board-wrapper { height: 95vh; width: 95vh; background-image: url('monopoly_board.png'); background-size: cover; border-radius: 5px; box-shadow: 0 0 50px rgba(0,0,0,0.8); position: relative; }
+        
+        /* Board Wrapper is the container for the image and all overlays */
+        #board-wrapper { 
+            height: 95vh; width: 95vh; 
+            background-image: url('monopoly_board.png'); 
+            background-size: cover; 
+            border-radius: 5px; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8); 
+            position: relative; 
+        }
+        
         #host-sidebar { width: var(--sidebar-width); background: #2c3e50; display: flex; flex-direction: column; padding: 20px; border-left: 2px solid #444; }
         
         /* OVERLAYS */
@@ -77,8 +88,16 @@
         .cd-text { font-size: 1.2rem; }
 
         /* BOARD ELEMENTS */
-        .token { position: absolute; width: 4%; height: 4%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 10; box-shadow: 3px 3px 5px rgba(0,0,0,0.8); }
-        .owner-marker { position: absolute; width: 2.5%; height: 2.5%; border-radius: 50%; transform: translate(-50%, -50%); z-index: 5; border: 1px solid rgba(255,255,255,0.8); }
+        .token { position: absolute; width: 3.5%; height: 3.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 20; box-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        
+        /* OWNERSHIP BARS */
+        .owner-bar { position: absolute; z-index: 5; transition: all 0.3s; }
+        /* Variations based on board side */
+        .bar-bottom { height: 1.5%; width: 7.5%; bottom: 0; transform: translateX(-50%); }
+        .bar-left   { height: 7.5%; width: 1.5%; left: 0; top: auto; transform: translateY(-50%); }
+        .bar-top    { height: 1.5%; width: 7.5%; top: 0; bottom: auto; transform: translateX(-50%); }
+        .bar-right  { height: 7.5%; width: 1.5%; right: 0; left: auto; transform: translateY(-50%); }
+
         .pot-display { background: #27ae60; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
 
         /* --- 4. CLIENT (PHONE) --- */
@@ -115,7 +134,8 @@
         </div>
 
         <div id="join-flow" class="menu-container">
-            <input type="text" id="code-input" class="input-code" placeholder="CODE" maxlength="4">
+            <input type="text" id="name-input" class="input-std" placeholder="NICKNAME" maxlength="12">
+            <input type="text" id="code-input" class="input-std input-code" placeholder="ROOM CODE" maxlength="4">
             <button class="btn btn-green" onclick="initPlayer()" style="width: 250px;">CONNECT</button>
             <button class="btn btn-text" onclick="hideJoin()">Back</button>
         </div>
@@ -205,7 +225,7 @@
         </div>
 
         <div id="c-controls">
-            </div>
+        </div>
     </div>
 
 <script>
@@ -251,48 +271,67 @@
         { text: "You have won second prize in a beauty contest. Collect $10", action: "money", amount: 10 }
     ];
 
-    // --- BOARD DATA ---
+    // --- REFINED BOARD DATA (Standard 11x11 Grid) ---
+    // Corner centers are at ~6.5% and ~93.5%.
+    // In-between 9 spaces are distributed evenly (approx 8.2% spacing).
+    // Bottom Row (0-10): Y=93.5%. X goes 93.5 -> 6.5.
+    // Left Row (10-20): X=6.5%. Y goes 93.5 -> 6.5.
+    // Top Row (20-30): Y=6.5%. X goes 6.5 -> 93.5.
+    // Right Row (30-40): X=93.5%. Y goes 6.5 -> 93.5.
+
+    const CORNER_LOW = 6.5;
+    const CORNER_HIGH = 93.5;
+    const STEP = 8.22; // (93.5 - 6.5) / 10 = 8.7? No, there are 9 spaces between corners.
+    // Length between corners = 87%. 9 spaces. ~8.1-8.2% width per space.
+    // Actual accurate positions based on standard board image:
+    const POS = [93.5, 85.3, 77.1, 69.0, 60.8, 52.7, 44.5, 36.4, 28.2, 20.0, 6.5];
+    
+    // Mapping 0-39 to coordinates
+    // side: used for bar rotation. 'bottom', 'left', 'top', 'right'
     const boardMap = [
-        { name: "GO", type: "go", top: 93, left: 93 },
-        { name: "Mediter. Ave", type: "prop", group: "bg-brown", price: 60, rent: [2,10,30,90,160,250], mortgage: 30, build: 50, owner: null, houses: 0, top: 93, left: 85.5 },
-        { name: "Comm. Chest", type: "chest", top: 93, left: 77.5 },
-        { name: "Baltic Ave", type: "prop", group: "bg-brown", price: 60, rent: [4,20,60,180,320,450], mortgage: 30, build: 50, owner: null, houses: 0, top: 93, left: 69.5 },
-        { name: "Income Tax", type: "tax", cost: 200, top: 93, left: 61.5 },
-        { name: "Reading RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: 93, left: 53.5 },
-        { name: "Oriental Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6,30,90,270,400,550], mortgage: 50, build: 50, owner: null, houses: 0, top: 93, left: 45.5 },
-        { name: "Chance", type: "chance", top: 93, left: 37.5 },
-        { name: "Vermont Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6,30,90,270,400,550], mortgage: 50, build: 50, owner: null, houses: 0, top: 93, left: 29.5 },
-        { name: "Conn. Ave", type: "prop", group: "bg-lightblue", price: 120, rent: [8,40,100,300,450,600], mortgage: 60, build: 50, owner: null, houses: 0, top: 93, left: 21.5 },
-        { name: "Jail", type: "jail", top: 93, left: 7 },
-        { name: "St. Charles", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, top: 85.5, left: 7 },
-        { name: "Electric Co", type: "prop", group: "bg-gray", price: 150, rent: [0,0,0,0,0,0], mortgage: 75, build: 0, owner: null, houses: 0, top: 77.5, left: 7 },
-        { name: "States Ave", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, top: 69.5, left: 7 },
-        { name: "Virginia Ave", type: "prop", group: "bg-pink", price: 160, rent: [12,60,180,500,700,900], mortgage: 80, build: 100, owner: null, houses: 0, top: 61.5, left: 7 },
-        { name: "Penn RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: 53.5, left: 7 },
-        { name: "St. James", type: "prop", group: "bg-orange", price: 180, rent: [14,70,200,550,750,950], mortgage: 90, build: 100, owner: null, houses: 0, top: 45.5, left: 7 },
-        { name: "Comm. Chest", type: "chest", top: 37.5, left: 7 },
-        { name: "Tennessee", type: "prop", group: "bg-orange", price: 180, rent: [14,70,200,550,750,950], mortgage: 90, build: 100, owner: null, houses: 0, top: 29.5, left: 7 },
-        { name: "New York", type: "prop", group: "bg-orange", price: 200, rent: [16,80,220,600,800,1000], mortgage: 100, build: 100, owner: null, houses: 0, top: 21.5, left: 7 },
-        { name: "Free Parking", type: "parking", top: 7, left: 7 },
-        { name: "Kentucky", type: "prop", group: "bg-red", price: 220, rent: [18,90,250,700,875,1050], mortgage: 110, build: 150, owner: null, houses: 0, top: 7, left: 21.5 },
-        { name: "Chance", type: "chance", top: 7, left: 29.5 },
-        { name: "Indiana", type: "prop", group: "bg-red", price: 220, rent: [18,90,250,700,875,1050], mortgage: 110, build: 150, owner: null, houses: 0, top: 7, left: 37.5 },
-        { name: "Illinois", type: "prop", group: "bg-red", price: 240, rent: [20,100,300,750,925,1100], mortgage: 120, build: 150, owner: null, houses: 0, top: 7, left: 45.5 },
-        { name: "B&O RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: 7, left: 53.5 },
-        { name: "Atlantic", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, top: 7, left: 61.5 },
-        { name: "Ventnor", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, top: 7, left: 69.5 },
-        { name: "Water Works", type: "prop", group: "bg-gray", price: 150, rent: [0,0,0,0,0,0], mortgage: 75, build: 0, owner: null, houses: 0, top: 7, left: 77.5 },
-        { name: "Marvin G.", type: "prop", group: "bg-yellow", price: 280, rent: [24,120,360,850,1025,1200], mortgage: 140, build: 150, owner: null, houses: 0, top: 7, left: 85.5 },
-        { name: "Go To Jail", type: "gotojail", top: 7, left: 93 },
-        { name: "Pacific", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, top: 21.5, left: 93 },
-        { name: "N. Carolina", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, top: 29.5, left: 93 },
-        { name: "Comm. Chest", type: "chest", top: 37.5, left: 93 },
-        { name: "Penn Ave", type: "prop", group: "bg-green", price: 320, rent: [28,150,450,1000,1200,1400], mortgage: 160, build: 200, owner: null, houses: 0, top: 45.5, left: 93 },
-        { name: "Short Line", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: 53.5, left: 93 },
-        { name: "Chance", type: "chance", top: 61.5, left: 93 },
-        { name: "Park Place", type: "prop", group: "bg-darkblue", price: 350, rent: [35,175,500,1100,1300,1500], mortgage: 175, build: 200, owner: null, houses: 0, top: 69.5, left: 93 },
-        { name: "Luxury Tax", type: "tax", cost: 100, top: 77.5, left: 93 },
-        { name: "Boardwalk", type: "prop", group: "bg-darkblue", price: 400, rent: [50,200,600,1400,1700,2000], mortgage: 200, build: 200, owner: null, houses: 0, top: 85.5, left: 93 },
+        { name: "GO", type: "go", top: POS[0], left: POS[0], side: 'bottom' },
+        { name: "Mediter. Ave", type: "prop", group: "bg-brown", price: 60, rent: [2,10,30,90,160,250], mortgage: 30, build: 50, owner: null, houses: 0, top: POS[0], left: POS[1], side: 'bottom' },
+        { name: "Comm. Chest", type: "chest", top: POS[0], left: POS[2], side: 'bottom' },
+        { name: "Baltic Ave", type: "prop", group: "bg-brown", price: 60, rent: [4,20,60,180,320,450], mortgage: 30, build: 50, owner: null, houses: 0, top: POS[0], left: POS[3], side: 'bottom' },
+        { name: "Income Tax", type: "tax", cost: 200, top: POS[0], left: POS[4], side: 'bottom' },
+        { name: "Reading RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[0], left: POS[5], side: 'bottom' },
+        { name: "Oriental Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6,30,90,270,400,550], mortgage: 50, build: 50, owner: null, houses: 0, top: POS[0], left: POS[6], side: 'bottom' },
+        { name: "Chance", type: "chance", top: POS[0], left: POS[7], side: 'bottom' },
+        { name: "Vermont Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6,30,90,270,400,550], mortgage: 50, build: 50, owner: null, houses: 0, top: POS[0], left: POS[8], side: 'bottom' },
+        { name: "Conn. Ave", type: "prop", group: "bg-lightblue", price: 120, rent: [8,40,100,300,450,600], mortgage: 60, build: 50, owner: null, houses: 0, top: POS[0], left: POS[9], side: 'bottom' },
+        { name: "Jail", type: "jail", top: POS[0], left: POS[10], side: 'bottom' },
+        
+        { name: "St. Charles", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, top: POS[9], left: POS[10], side: 'left' },
+        { name: "Electric Co", type: "prop", group: "bg-gray", price: 150, rent: [0,0,0,0,0,0], mortgage: 75, build: 0, owner: null, houses: 0, top: POS[8], left: POS[10], side: 'left' },
+        { name: "States Ave", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, top: POS[7], left: POS[10], side: 'left' },
+        { name: "Virginia Ave", type: "prop", group: "bg-pink", price: 160, rent: [12,60,180,500,700,900], mortgage: 80, build: 100, owner: null, houses: 0, top: POS[6], left: POS[10], side: 'left' },
+        { name: "Penn RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[5], left: POS[10], side: 'left' },
+        { name: "St. James", type: "prop", group: "bg-orange", price: 180, rent: [14,70,200,550,750,950], mortgage: 90, build: 100, owner: null, houses: 0, top: POS[4], left: POS[10], side: 'left' },
+        { name: "Comm. Chest", type: "chest", top: POS[3], left: POS[10], side: 'left' },
+        { name: "Tennessee", type: "prop", group: "bg-orange", price: 180, rent: [14,70,200,550,750,950], mortgage: 90, build: 100, owner: null, houses: 0, top: POS[2], left: POS[10], side: 'left' },
+        { name: "New York", type: "prop", group: "bg-orange", price: 200, rent: [16,80,220,600,800,1000], mortgage: 100, build: 100, owner: null, houses: 0, top: POS[1], left: POS[10], side: 'left' },
+        { name: "Free Parking", type: "parking", top: POS[10], left: POS[10], side: 'top' },
+        
+        { name: "Kentucky", type: "prop", group: "bg-red", price: 220, rent: [18,90,250,700,875,1050], mortgage: 110, build: 150, owner: null, houses: 0, top: POS[10], left: POS[9], side: 'top' },
+        { name: "Chance", type: "chance", top: POS[10], left: POS[8], side: 'top' },
+        { name: "Indiana", type: "prop", group: "bg-red", price: 220, rent: [18,90,250,700,875,1050], mortgage: 110, build: 150, owner: null, houses: 0, top: POS[10], left: POS[7], side: 'top' },
+        { name: "Illinois", type: "prop", group: "bg-red", price: 240, rent: [20,100,300,750,925,1100], mortgage: 120, build: 150, owner: null, houses: 0, top: POS[10], left: POS[6], side: 'top' },
+        { name: "B&O RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[10], left: POS[5], side: 'top' },
+        { name: "Atlantic", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, top: POS[10], left: POS[4], side: 'top' },
+        { name: "Ventnor", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, top: POS[10], left: POS[3], side: 'top' },
+        { name: "Water Works", type: "prop", group: "bg-gray", price: 150, rent: [0,0,0,0,0,0], mortgage: 75, build: 0, owner: null, houses: 0, top: POS[10], left: POS[2], side: 'top' },
+        { name: "Marvin G.", type: "prop", group: "bg-yellow", price: 280, rent: [24,120,360,850,1025,1200], mortgage: 140, build: 150, owner: null, houses: 0, top: POS[10], left: POS[1], side: 'top' },
+        { name: "Go To Jail", type: "gotojail", top: POS[10], left: POS[0], side: 'top' },
+        
+        { name: "Pacific", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, top: POS[1], left: POS[0], side: 'right' },
+        { name: "N. Carolina", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, top: POS[2], left: POS[0], side: 'right' },
+        { name: "Comm. Chest", type: "chest", top: POS[3], left: POS[0], side: 'right' },
+        { name: "Penn Ave", type: "prop", group: "bg-green", price: 320, rent: [28,150,450,1000,1200,1400], mortgage: 160, build: 200, owner: null, houses: 0, top: POS[4], left: POS[0], side: 'right' },
+        { name: "Short Line", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[5], left: POS[0], side: 'right' },
+        { name: "Chance", type: "chance", top: POS[6], left: POS[0], side: 'right' },
+        { name: "Park Place", type: "prop", group: "bg-darkblue", price: 350, rent: [35,175,500,1100,1300,1500], mortgage: 175, build: 200, owner: null, houses: 0, top: POS[7], left: POS[0], side: 'right' },
+        { name: "Luxury Tax", type: "tax", cost: 100, top: POS[8], left: POS[0], side: 'right' },
+        { name: "Boardwalk", type: "prop", group: "bg-darkblue", price: 400, rent: [50,200,600,1400,1700,2000], mortgage: 200, build: 200, owner: null, houses: 0, top: POS[9], left: POS[0], side: 'right' },
     ];
 
     // --- GAME STATE ---
@@ -340,29 +379,37 @@
     function handleHostConn(conn) {
         if(gameState.gameStarted) { conn.close(); return; }
         
-        const pId = gameState.players.length;
-        if(pId >= 4) return; 
+        // Wait for player to send JOIN packet with name
+        conn.on('data', (data) => {
+            if(data.type === 'JOIN') {
+                const pId = gameState.players.length;
+                if(pId >= 4) { conn.send({type:'ERROR', msg:'Lobby Full'}); return; }
 
-        const newPlayer = {
-            id: pId, 
-            name: ["Red","Blue","Green","Yellow"][pId],
-            colorClass: ["p-red","p-blue","p-green","p-yellow"][pId],
-            money: 1500,
-            position: 0,
-            jailed: false,
-            getOutCard: 0
-        };
+                const playerName = data.name || `Player ${pId+1}`;
+                const newPlayer = {
+                    id: pId, 
+                    name: playerName,
+                    colorClass: ["p-red","p-blue","p-green","p-yellow"][pId],
+                    money: 1500,
+                    position: 0,
+                    jailed: false,
+                    getOutCard: 0
+                };
 
-        gameState.players.push(newPlayer);
-        connections[pId] = conn;
+                gameState.players.push(newPlayer);
+                connections[pId] = conn;
 
-        renderLobbyList();
-
-        conn.on('open', () => {
-            conn.send({ type: 'WELCOME', player: newPlayer });
-            conn.send({ type: 'LOBBY_UPDATE', players: gameState.players, rules: gameState.rules });
+                renderLobbyList();
+                
+                // Handshake back
+                conn.send({ type: 'WELCOME', player: newPlayer });
+                conn.send({ type: 'LOBBY_UPDATE', players: gameState.players, rules: gameState.rules });
+                
+                // Now switch to game action handler
+                conn.off('data'); // Remove handshake listener
+                conn.on('data', d => handleHostAction(pId, d));
+            }
         });
-        conn.on('data', data => handleHostAction(pId, data));
     }
 
     function renderLobbyList() {
@@ -376,7 +423,7 @@
         gameState.rules.pot = document.getElementById('rule-pot').checked;
         gameState.rules.goDouble = document.getElementById('rule-go').checked;
         gameState.rules.snake = document.getElementById('rule-snake').checked;
-        gameState.rules.jailRent = !document.getElementById('rule-jail').checked; // UI says "No Rent", internal is "jailRent"
+        gameState.rules.jailRent = !document.getElementById('rule-jail').checked; 
 
         gameState.gameStarted = true;
         switchScreen('host-screen');
@@ -419,7 +466,7 @@
             if(p.money >= sq.price) {
                 p.money -= sq.price;
                 sq.owner = pId;
-                addMarker(gameState.pendingProp, p.colorClass);
+                addOwnerBar(gameState.pendingProp, p.colorClass);
                 log(`Bought ${sq.name}`);
             }
             endTurn();
@@ -436,10 +483,6 @@
 
     function movePlayer(p, steps) {
         // Basic Move Logic
-        let landed = false;
-        let loops = 0;
-        
-        // Handling moving backward vs forward
         if(steps < 0) {
             p.position += steps;
             if(p.position < 0) p.position += 40;
@@ -526,20 +569,15 @@
         
         showOverlay(card.text, type);
 
-        // Execute Logic
         if(card.action === 'move') {
-            // Need to calculate if we pass GO
             let current = p.position;
             let target = card.target;
             if(target < current) {
-                // Passing GO
                 const sal = gameState.rules.goDouble ? 400 : 200;
                 p.money += sal;
             }
             p.position = target;
             updateToken(p);
-            // Handle landing on target (simplification: if property, pay rent; if tax, pay tax; don't trigger recursive cards)
-            // For MVP: Just end turn after movement unless logic dictates otherwise
         } 
         else if(card.action === 'money') {
             p.money += card.amount;
@@ -547,7 +585,6 @@
         else if(card.action === 'back_3') {
             p.position -= 3;
             updateToken(p);
-            // Should verify landing, but skipping for simplicity in card
         }
         else if(card.action === 'gotojail') {
             p.position = 10;
@@ -555,25 +592,21 @@
             updateToken(p);
         }
         else if(card.action === 'nearest_util') {
-            // Utilities are at 12 and 28
             let pos = p.position;
             let target = 12;
             if (pos >= 12 && pos < 28) target = 28;
-            if (pos >= 28) target = 12; // Wrap around
-            
-            if(target < pos) p.money += 200; // Pass go logic
+            if (pos >= 28) target = 12; 
+            if(target < pos) p.money += 200; 
             p.position = target;
             updateToken(p);
         }
         else if(card.action === 'nearest_rr') {
-            // RR at 5, 15, 25, 35
             let pos = p.position;
             let target = 5;
             if (pos >= 5) target = 15;
             if (pos >= 15) target = 25;
             if (pos >= 25) target = 35;
             if (pos >= 35) target = 5;
-            
             if(target < pos) p.money += 200;
             p.position = target;
             updateToken(p);
@@ -595,8 +628,6 @@
             });
         }
         else if(card.action === 'repairs') {
-            // Calculate houses
-            // Simplification: We track houses in boardMap, need to sum properties owned by player
             let cost = 0;
             boardMap.forEach(sq => {
                 if(sq.owner === p.id) {
@@ -625,19 +656,27 @@
     // --- HOST UI ---
     function createToken(p) {
         const d = document.createElement('div'); d.className=`token ${p.colorClass}`; d.id=`tok-${p.id}`;
-        const off = (p.id*3)-4.5; d.style.marginTop=off+'%'; d.style.marginLeft=off+'%';
         document.getElementById('board-wrapper').appendChild(d);
         updateToken(p);
     }
     function updateToken(p) {
         const sq = boardMap[p.position];
         const el = document.getElementById(`tok-${p.id}`);
-        el.style.top = sq.top + '%'; el.style.left = sq.left + '%';
+        // Add random slight offset to prevent stacking perfectly
+        const rX = (Math.random()*1.5)-0.75;
+        const rY = (Math.random()*1.5)-0.75;
+        el.style.top = (sq.top + rY) + '%'; 
+        el.style.left = (sq.left + rX) + '%';
     }
-    function addMarker(idx, color) {
+    function addOwnerBar(idx, color) {
         const sq = boardMap[idx];
-        const m = document.createElement('div'); m.className=`owner-marker ${color}`;
-        m.style.top=sq.top+'%'; m.style.left=sq.left+'%';
+        const m = document.createElement('div'); 
+        m.className = `owner-bar bar-${sq.side} ${color}`;
+        
+        // Position based on the center point, then CSS handles the offset to edge
+        m.style.top = (sq.side === 'left' || sq.side === 'right') ? sq.top + '%' : '';
+        m.style.left = (sq.side === 'top' || sq.side === 'bottom') ? sq.left + '%' : '';
+        
         document.getElementById('board-wrapper').appendChild(m);
     }
     function updatePot() { document.getElementById('pot-amount').innerText = gameState.potMoney; }
@@ -679,10 +718,20 @@
 
     // --- CLIENT ---
     function initPlayer() {
+        const name = document.getElementById('name-input').value.trim();
         const code = document.getElementById('code-input').value.toUpperCase();
+        
+        if(!code) { alert("Please enter room code"); return; }
+        
         peer = new Peer();
         peer.on('open', () => {
             hostConn = peer.connect(APP_ID + code);
+            
+            hostConn.on('open', () => {
+                // Send Join Request
+                hostConn.send({ type: 'JOIN', name: name || "Player" });
+            });
+
             hostConn.on('data', handleClientData);
         });
     }
@@ -692,6 +741,9 @@
             switchScreen('client-screen');
             myId = data.player.id;
             document.getElementById('c-name').innerText = data.player.name;
+        }
+        else if(data.type === 'ERROR') {
+            alert(data.msg);
         }
         else if(data.type === 'LOBBY_UPDATE') {
             document.getElementById('c-status').innerText = "Host is configuring rules...";
