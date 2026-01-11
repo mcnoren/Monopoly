@@ -36,7 +36,7 @@
         .btn-green { background: var(--primary); color: white; }
         .btn-blue { background: #3498db; color: white; }
         .btn-red { background: #e74c3c; color: white; }
-        .btn-purple { background: #9b59b6; color: white; } /* AI Button Color */
+        .btn-purple { background: #9b59b6; color: white; }
         .btn-text { background: transparent; color: #ccc; padding: 10px; font-size: 1rem; }
         .btn-text:hover { color: white; text-decoration: underline; }
 
@@ -107,16 +107,49 @@
         .pot-display { background: #27ae60; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
 
         /* --- 4. CLIENT (PHONE) --- */
-        #client-screen { flex-direction: column; background: #34495e; padding: 15px; position:relative; }
+        #client-screen { flex-direction: column; background: #34495e; padding: 15px; position:relative; overflow: hidden; }
         .c-header { text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px; }
         .c-balance { font-size: 2.5rem; color: #2ecc71; font-weight: bold; }
-        .deed-card { background: white; color: black; padding: 0; width: 100%; max-width: 320px; margin: 0 auto; display: none; border: 1px solid black; }
+        
+        /* DEED CARDS */
+        .deed-card { background: white; color: black; padding: 0; width: 100%; max-width: 320px; margin: 0 auto; display: none; border: 1px solid black; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .deed-header { background: #333; color: white; padding: 10px; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 1.2rem; border: 2px solid black; margin: 5px; }
         .deed-body { padding: 10px 15px; font-family: 'Arial Narrow', sans-serif; font-size: 0.9rem; text-align: center; }
         .rent-row { display: flex; justify-content: space-between; margin: 5px 0; }
         
         .btn-action { width: 100%; padding: 20px; font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
         .btn-action:active { transform: translateY(4px); box-shadow: none; }
+
+        /* INVENTORY / SWIPE UI */
+        #inventory-container { 
+            display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; 
+            margin-top: auto; border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .prop-group-btn {
+            min-width: 60px; height: 60px; border-radius: 8px; border: 2px solid white;
+            display: flex; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 1.2rem; color: white; text-shadow: 0 1px 3px black;
+            cursor: pointer; position: relative;
+        }
+        .prop-badge {
+            position: absolute; top: -5px; right: -5px; background: red; color: white;
+            border-radius: 50%; width: 20px; height: 20px; font-size: 0.8rem;
+            display: flex; justify-content: center; align-items: center; border: 1px solid white;
+        }
+
+        #swipe-overlay {
+            position: absolute; top:0; left:0; width:100%; height:100%; 
+            background: rgba(0,0,0,0.95); z-index: 500; display: none;
+            flex-direction: column;
+        }
+        .swipe-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .swipe-container {
+            flex-grow: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+            align-items: center; padding: 0 20px; gap: 20px;
+        }
+        .swipe-item {
+            scroll-snap-align: center; flex: 0 0 100%; display: flex; justify-content: center;
+        }
 
         /* ERROR TOAST */
         #error-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; z-index: 1000; font-weight: bold; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
@@ -215,6 +248,15 @@
     </div>
 
     <div id="client-screen" class="screen">
+        <div id="swipe-overlay">
+            <div class="swipe-header">
+                <h2 style="margin:0">MY PROPERTIES</h2>
+                <button class="btn btn-red" style="padding: 5px 15px;" onclick="closeSwipe()">X</button>
+            </div>
+            <div id="swipe-container" class="swipe-container"></div>
+            <div style="text-align:center; padding:10px; color:#aaa;">Swipe to view</div>
+        </div>
+
         <div id="client-dice-overlay" class="overlay-layer" style="z-index: 300; display:none;">
             <div style="text-align:center;">
                 <div style="font-size:2rem; font-weight:bold; margin-bottom:20px;">ROLLED</div>
@@ -260,10 +302,13 @@
         </div>
 
         <div id="c-controls"></div>
+        
+        <div style="padding: 5px 0; font-size: 0.8rem; color:#aaa; text-transform:uppercase; letter-spacing:1px;">My Properties</div>
+        <div id="inventory-container"></div>
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v9-"; 
+    const APP_ID = "poly-lob-v10-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     
     const PEER_CONFIG = {
@@ -366,6 +411,7 @@
     let myId = null; 
     let hostConn = null;
     let heartbeater = null;
+    let clientPropState = []; // Holds ownership data on client
 
     let gameState = {
         players: [], 
@@ -417,7 +463,6 @@
         const p = gameState.players[pId];
         if (!p || !p.isAI) return;
 
-        // "Thinking" time
         setTimeout(() => {
             if (gameState.turnIndex !== pId) return;
 
@@ -430,7 +475,6 @@
             }
             else if (gameState.turnPhase === 'DECIDING') {
                 const sq = boardMap[gameState.pendingProp];
-                // Always buy if affordable
                 if (p.money >= sq.price) {
                     handleHostAction(pId, {type: 'BUY'});
                 } else {
@@ -496,7 +540,7 @@
         gameState.players.forEach(p => createToken(p));
         renderGameList();
         broadcastState("Game Started!");
-        processAITurn(); // Check if Player 1 is AI
+        processAITurn();
     }
 
     function renderDiceHTML(val) {
@@ -787,13 +831,18 @@
     function broadcastState(msg) {
         if(msg) log(msg);
         renderGameList();
+        
+        // Include property ownership data for clients
+        const propData = boardMap.map(s => ({owner: s.owner, houses: s.houses}));
+        
         const payload = {
             type: 'STATE',
             players: gameState.players,
             turnIndex: gameState.turnIndex,
             turnPhase: gameState.turnPhase,
             activeCard: gameState.activeCard,
-            pendingProp: gameState.pendingProp !== null ? boardMap[gameState.pendingProp] : null
+            pendingProp: gameState.pendingProp !== null ? boardMap[gameState.pendingProp] : null,
+            properties: propData // NEW FIELD
         };
         Object.values(connections).forEach(c => c.send(payload));
     }
@@ -833,7 +882,11 @@
         if(data.type === 'WELCOME') { switchScreen('client-screen'); myId = data.player.id; document.getElementById('c-name').innerText = data.player.name; }
         else if(data.type === 'ERROR') { showError(data.msg); document.getElementById('btn-connect').innerText = "CONNECT"; }
         else if(data.type === 'LOBBY_UPDATE') { document.getElementById('c-status').innerText = "Host is configuring rules..."; }
-        else if(data.type === 'STATE') { updateClientUI(data); }
+        else if(data.type === 'STATE') { 
+            // Update local ownership cache
+            if(data.properties) clientPropState = data.properties;
+            updateClientUI(data); 
+        }
     }
 
     function updateClientUI(state) {
@@ -844,6 +897,9 @@
         con.innerHTML = ''; 
         document.getElementById('deed-card').style.display = 'none';
         document.getElementById('client-overlay-card').style.display = 'none';
+
+        // Render Inventory
+        renderInventory();
 
         if(!isMyTurn) { document.getElementById('c-status').innerText = `${state.players[state.turnIndex].name}'s Turn`; return; }
         document.getElementById('c-status').innerText = "YOUR TURN";
@@ -861,7 +917,7 @@
         }
         else if(state.turnPhase === 'DECIDING') {
             const p = state.pendingProp;
-            renderDeed(p);
+            renderDeed(p, 'deed-card');
             document.getElementById('deed-card').style.display = 'block';
             con.innerHTML = `<button class="btn-action btn-green" onclick="send('BUY')">BUY for $${p.price}</button><button class="btn-action btn-blue" onclick="send('PASS')">PASS</button>`;
         }
@@ -874,19 +930,99 @@
         }
     }
 
-    function renderDeed(prop) {
-        const head = document.getElementById('deed-header');
-        head.className = `deed-header ${prop.group}`;
-        head.innerText = prop.name;
-        document.getElementById('r-base').innerText = `$${prop.rent[0]}`;
-        document.getElementById('r-1').innerText = `$${prop.rent[1]}`;
-        document.getElementById('r-2').innerText = `$${prop.rent[2]}`;
-        document.getElementById('r-3').innerText = `$${prop.rent[3]}`;
-        document.getElementById('r-4').innerText = `$${prop.rent[4]}`;
-        document.getElementById('r-h').innerText = `$${prop.rent[5]}`;
-        document.getElementById('r-mort').innerText = `$${prop.mortgage}`;
-        document.getElementById('r-build').innerText = `$${prop.build}`;
-        document.getElementById('r-price').innerText = `$${prop.price}`;
+    // --- CLIENT INVENTORY LOGIC ---
+    function renderInventory() {
+        const container = document.getElementById('inventory-container');
+        container.innerHTML = '';
+        
+        // Group my properties by color
+        const myProps = [];
+        clientPropState.forEach((pState, index) => {
+            if(pState.owner === myId) {
+                myProps.push(boardMap[index]);
+            }
+        });
+
+        if(myProps.length === 0) {
+            container.innerHTML = '<div style="color:#666; margin:0 auto;">No properties yet</div>';
+            return;
+        }
+
+        const groups = {};
+        myProps.forEach(p => {
+            if(!groups[p.group]) groups[p.group] = [];
+            groups[p.group].push(p);
+        });
+
+        // Create buttons for each group
+        for(const [group, props] of Object.entries(groups)) {
+            const btn = document.createElement('div');
+            btn.className = `prop-group-btn ${group}`;
+            btn.innerHTML = `<div class="prop-badge">${props.length}</div>${getGroupIcon(group)}`;
+            btn.onclick = () => openSwipeModal(props);
+            container.appendChild(btn);
+        }
+    }
+
+    function getGroupIcon(group) {
+        // Just use color squares or simple text
+        return ""; // CSS bg handles color
+    }
+
+    function openSwipeModal(props) {
+        const cont = document.getElementById('swipe-container');
+        cont.innerHTML = '';
+        
+        props.forEach(p => {
+            // Clone deed card structure for swipe
+            const wrap = document.createElement('div');
+            wrap.className = 'swipe-item';
+            
+            // Generate deed HTML
+            let html = `
+                <div style="background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;">
+                    <div class="${p.group}" style="padding:10px; text-align:center; font-weight:bold; color:white; border:2px solid black; margin:5px; text-transform:uppercase;">${p.name}</div>
+                    <div style="padding:10px; font-size:0.9rem; text-align:center;">
+                        <div style="margin-bottom:5px;">Rent $${p.rent[0]}</div>
+                        <div style="display:flex; justify-content:space-between;"><span>1 House</span><span>$${p.rent[1]}</span></div>
+                        <div style="display:flex; justify-content:space-between;"><span>2 Houses</span><span>$${p.rent[2]}</span></div>
+                        <div style="display:flex; justify-content:space-between;"><span>3 Houses</span><span>$${p.rent[3]}</span></div>
+                        <div style="display:flex; justify-content:space-between;"><span>4 Houses</span><span>$${p.rent[4]}</span></div>
+                        <div style="display:flex; justify-content:space-between;"><span>HOTEL</span><span>$${p.rent[5]}</span></div>
+                        <div style="margin-top:10px; border-top:1px solid #ccc; padding-top:5px;">
+                            Mortgage: $${p.mortgage}<br>Build Cost: $${p.build}
+                        </div>
+                    </div>
+                </div>
+            `;
+            wrap.innerHTML = html;
+            cont.appendChild(wrap);
+        });
+
+        document.getElementById('swipe-overlay').style.display = 'flex';
+    }
+
+    window.closeSwipe = function() {
+        document.getElementById('swipe-overlay').style.display = 'none';
+    }
+
+    function renderDeed(prop, elementId) {
+        // ... (Existing deed render logic reused in swipe)
+        // Kept for buying phase
+        const head = document.querySelector(`#${elementId} .deed-header`);
+        if(head) {
+            head.className = `deed-header ${prop.group}`;
+            head.innerText = prop.name;
+            document.querySelector(`#${elementId} #r-base`).innerText = `$${prop.rent[0]}`;
+            document.querySelector(`#${elementId} #r-1`).innerText = `$${prop.rent[1]}`;
+            document.querySelector(`#${elementId} #r-2`).innerText = `$${prop.rent[2]}`;
+            document.querySelector(`#${elementId} #r-3`).innerText = `$${prop.rent[3]}`;
+            document.querySelector(`#${elementId} #r-4`).innerText = `$${prop.rent[4]}`;
+            document.querySelector(`#${elementId} #r-h`).innerText = `$${prop.rent[5]}`;
+            document.querySelector(`#${elementId} #r-mort`).innerText = `$${prop.mortgage}`;
+            document.querySelector(`#${elementId} #r-build`).innerText = `$${prop.build}`;
+            document.querySelector(`#${elementId} #r-price`).innerText = `$${prop.price}`;
+        }
     }
 
     function send(type) { if(hostConn && hostConn.open) hostConn.send({type:type}); }
