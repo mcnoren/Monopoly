@@ -111,32 +111,46 @@
         .c-header { text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px; }
         .c-balance { font-size: 2.5rem; color: #2ecc71; font-weight: bold; }
         
-        /* DEED CARDS */
         .deed-card { background: white; color: black; padding: 0; width: 100%; max-width: 320px; margin: 0 auto; display: none; border: 1px solid black; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .deed-header { background: #333; color: white; padding: 10px; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 1.2rem; border: 2px solid black; margin: 5px; }
         .deed-body { padding: 10px 15px; font-family: 'Arial Narrow', sans-serif; font-size: 0.9rem; text-align: center; }
-        .rent-row { display: flex; justify-content: space-between; margin: 5px 0; }
+        .rent-row { display: flex; justify-content: space-between; margin: 5px 0; padding: 2px 5px; }
+        .rent-highlight { background-color: #f1c40f; font-weight: bold; border-radius: 4px; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
         
         .btn-action { width: 100%; padding: 20px; font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
         .btn-action:active { transform: translateY(4px); box-shadow: none; }
 
-        /* INVENTORY / SWIPE UI */
-        #inventory-container { 
-            display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; 
-            margin-top: auto; border-top: 1px solid rgba(255,255,255,0.2);
-        }
-        .prop-group-btn {
-            min-width: 60px; height: 60px; border-radius: 8px; border: 2px solid white;
-            display: flex; justify-content: center; align-items: center;
-            font-weight: bold; font-size: 1.2rem; color: white; text-shadow: 0 1px 3px black;
-            cursor: pointer; position: relative;
-        }
-        .prop-badge {
-            position: absolute; top: -5px; right: -5px; background: red; color: white;
-            border-radius: 50%; width: 20px; height: 20px; font-size: 0.8rem;
-            display: flex; justify-content: center; align-items: center; border: 1px solid white;
+        /* --- NEW: CENTRAL INVENTORY AREA --- */
+        #client-main-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; width: 100%; }
+        
+        #inventory-grid { 
+            display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; 
+            width: 100%; max-width: 400px; padding: 10px; overflow-y: auto;
         }
 
+        /* CARD STACK LOOK */
+        .card-stack {
+            width: 100px; height: 140px; background: white; border-radius: 6px;
+            position: relative; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            transition: transform 0.1s; border: 1px solid #999;
+            display: flex; flex-direction: column;
+        }
+        .card-stack:active { transform: scale(0.95); }
+        /* Pseudo-elements for "Stack" effect */
+        .card-stack::before {
+            content: ""; position: absolute; top: -3px; left: 3px; width: 100%; height: 100%;
+            background: white; border: 1px solid #999; border-radius: 6px; z-index: -1;
+        }
+        .card-stack::after {
+            content: ""; position: absolute; top: -6px; left: 6px; width: 100%; height: 100%;
+            background: white; border: 1px solid #999; border-radius: 6px; z-index: -2;
+        }
+        
+        .stack-header { height: 30px; border-radius: 5px 5px 0 0; border-bottom: 2px solid black; }
+        .stack-body { flex-grow: 1; display: flex; justify-content: center; align-items: center; color: black; font-weight: bold; font-size: 1.5rem; }
+        .stack-label { font-size: 0.7rem; text-align: center; color: #555; padding-bottom: 5px; text-transform: uppercase;}
+
+        /* SWIPE MODAL */
         #swipe-overlay {
             position: absolute; top:0; left:0; width:100%; height:100%; 
             background: rgba(0,0,0,0.95); z-index: 500; display: none;
@@ -282,7 +296,7 @@
             <div id="c-status" style="color: #bbb; margin-top:5px;">Waiting for host...</div>
         </div>
 
-        <div style="flex-grow:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <div id="client-main-area">
             <div id="deed-card" class="deed-card">
                 <div id="deed-header" class="deed-header">TITLE</div>
                 <div class="deed-body">
@@ -299,16 +313,17 @@
                 </div>
                 <div style="background:black; color:white; text-align:center; padding:5px; font-weight:bold; font-size:1.5rem;">PRICE <span id="r-price">$0</span></div>
             </div>
+
+            <div id="inventory-grid">
+                <div style="color:#888;">No properties owned</div>
+            </div>
         </div>
 
         <div id="c-controls"></div>
-        
-        <div style="padding: 5px 0; font-size: 0.8rem; color:#aaa; text-transform:uppercase; letter-spacing:1px;">My Properties</div>
-        <div id="inventory-container"></div>
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v10-"; 
+    const APP_ID = "poly-lob-v11-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     
     const PEER_CONFIG = {
@@ -411,7 +426,7 @@
     let myId = null; 
     let hostConn = null;
     let heartbeater = null;
-    let clientPropState = []; // Holds ownership data on client
+    let clientPropState = [];
 
     let gameState = {
         players: [], 
@@ -832,7 +847,7 @@
         if(msg) log(msg);
         renderGameList();
         
-        // Include property ownership data for clients
+        // Include ownership data for clients
         const propData = boardMap.map(s => ({owner: s.owner, houses: s.houses}));
         
         const payload = {
@@ -842,7 +857,7 @@
             turnPhase: gameState.turnPhase,
             activeCard: gameState.activeCard,
             pendingProp: gameState.pendingProp !== null ? boardMap[gameState.pendingProp] : null,
-            properties: propData // NEW FIELD
+            properties: propData 
         };
         Object.values(connections).forEach(c => c.send(payload));
     }
@@ -883,7 +898,6 @@
         else if(data.type === 'ERROR') { showError(data.msg); document.getElementById('btn-connect').innerText = "CONNECT"; }
         else if(data.type === 'LOBBY_UPDATE') { document.getElementById('c-status').innerText = "Host is configuring rules..."; }
         else if(data.type === 'STATE') { 
-            // Update local ownership cache
             if(data.properties) clientPropState = data.properties;
             updateClientUI(data); 
         }
@@ -895,78 +909,104 @@
         const isMyTurn = state.turnIndex === myId;
         const con = document.getElementById('c-controls');
         con.innerHTML = ''; 
+        
+        // Hide specific overlays unless needed
         document.getElementById('deed-card').style.display = 'none';
         document.getElementById('client-overlay-card').style.display = 'none';
+        document.getElementById('inventory-grid').style.display = 'none';
 
-        // Render Inventory
-        renderInventory();
+        // Default: Show Inventory
+        let showInventory = true;
 
-        if(!isMyTurn) { document.getElementById('c-status').innerText = `${state.players[state.turnIndex].name}'s Turn`; return; }
-        document.getElementById('c-status').innerText = "YOUR TURN";
-
-        if(state.turnPhase === 'ROLLING') {
-            if(me.jailed) {
-                con.innerHTML = `
-                    <div style="text-align:center; margin-bottom:10px; color:#e74c3c; font-weight:bold;">YOU ARE IN JAIL (Turn ${me.jailTurns}/3)</div>
-                    <button class="btn-action btn-red" onclick="send('PAY_JAIL')">PAY $50 TO LEAVE</button>
-                    <button class="btn-action btn-green" onclick="send('ROLL')">ROLL FOR DOUBLES</button>
-                `;
-            } else {
-                con.innerHTML = `<button class="btn-action btn-green" onclick="send('ROLL')">ROLL DICE</button>`;
-            }
-        }
-        else if(state.turnPhase === 'DECIDING') {
+        if(state.turnPhase === 'DECIDING' && isMyTurn) {
+            showInventory = false;
             const p = state.pendingProp;
             renderDeed(p, 'deed-card');
             document.getElementById('deed-card').style.display = 'block';
             con.innerHTML = `<button class="btn-action btn-green" onclick="send('BUY')">BUY for $${p.price}</button><button class="btn-action btn-blue" onclick="send('PASS')">PASS</button>`;
         }
-        else if(state.turnPhase === 'ACKNOWLEDGING') {
+        else if(state.turnPhase === 'ACKNOWLEDGING' && isMyTurn) {
+            showInventory = false;
             const card = state.activeCard;
             document.getElementById('c-ov-title').innerText = card.title;
             document.getElementById('c-ov-text').innerText = card.text;
             document.getElementById('c-ov-content').className = `card-display cd-${card.type}`;
             document.getElementById('client-overlay-card').style.display = 'flex';
         }
+        else if(isMyTurn) {
+            // My Turn but not Deciding/Ack -> Rolling
+            document.getElementById('c-status').innerText = "YOUR TURN";
+            if(state.turnPhase === 'ROLLING') {
+                if(me.jailed) {
+                    con.innerHTML = `
+                        <div style="text-align:center; margin-bottom:10px; color:#e74c3c; font-weight:bold;">YOU ARE IN JAIL (Turn ${me.jailTurns}/3)</div>
+                        <button class="btn-action btn-red" onclick="send('PAY_JAIL')">PAY $50 TO LEAVE</button>
+                        <button class="btn-action btn-green" onclick="send('ROLL')">ROLL FOR DOUBLES</button>
+                    `;
+                } else {
+                    con.innerHTML = `<button class="btn-action btn-green" onclick="send('ROLL')">ROLL DICE</button>`;
+                }
+            }
+        } else {
+            document.getElementById('c-status').innerText = `${state.players[state.turnIndex].name}'s Turn`;
+        }
+
+        if(showInventory) {
+            document.getElementById('inventory-grid').style.display = 'flex';
+            renderInventory();
+        }
     }
 
-    // --- CLIENT INVENTORY LOGIC ---
+    // --- NEW INVENTORY LOGIC ---
     function renderInventory() {
-        const container = document.getElementById('inventory-container');
+        const container = document.getElementById('inventory-grid');
         container.innerHTML = '';
         
-        // Group my properties by color
         const myProps = [];
+        // Map owned properties
         clientPropState.forEach((pState, index) => {
             if(pState.owner === myId) {
-                myProps.push(boardMap[index]);
+                // Combine static board data with dynamic state (houses)
+                const staticData = boardMap[index];
+                myProps.push({...staticData, houses: pState.houses, originalIndex: index});
             }
         });
 
         if(myProps.length === 0) {
-            container.innerHTML = '<div style="color:#666; margin:0 auto;">No properties yet</div>';
+            container.innerHTML = '<div style="color:#888; margin-top:20px;">No properties owned</div>';
             return;
         }
 
+        // Group by Color
         const groups = {};
         myProps.forEach(p => {
             if(!groups[p.group]) groups[p.group] = [];
             groups[p.group].push(p);
         });
 
-        // Create buttons for each group
+        // Create Stack Elements
         for(const [group, props] of Object.entries(groups)) {
-            const btn = document.createElement('div');
-            btn.className = `prop-group-btn ${group}`;
-            btn.innerHTML = `<div class="prop-badge">${props.length}</div>${getGroupIcon(group)}`;
-            btn.onclick = () => openSwipeModal(props);
-            container.appendChild(btn);
-        }
-    }
+            const stack = document.createElement('div');
+            stack.className = 'card-stack';
+            stack.onclick = () => openSwipeModal(props);
+            
+            // Stack Visuals
+            const header = document.createElement('div');
+            header.className = `stack-header ${group}`; // Reuse bg-color classes
+            
+            const body = document.createElement('div');
+            body.className = 'stack-body';
+            body.innerText = props.length; // Count
+            
+            const label = document.createElement('div');
+            label.className = 'stack-label';
+            label.innerText = group.replace('bg-', '').toUpperCase(); // Label
 
-    function getGroupIcon(group) {
-        // Just use color squares or simple text
-        return ""; // CSS bg handles color
+            stack.appendChild(header);
+            stack.appendChild(body);
+            stack.appendChild(label);
+            container.appendChild(stack);
+        }
     }
 
     function openSwipeModal(props) {
@@ -974,28 +1014,37 @@
         cont.innerHTML = '';
         
         props.forEach(p => {
-            // Clone deed card structure for swipe
             const wrap = document.createElement('div');
             wrap.className = 'swipe-item';
             
-            // Generate deed HTML
-            let html = `
-                <div style="background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;">
-                    <div class="${p.group}" style="padding:10px; text-align:center; font-weight:bold; color:white; border:2px solid black; margin:5px; text-transform:uppercase;">${p.name}</div>
-                    <div style="padding:10px; font-size:0.9rem; text-align:center;">
-                        <div style="margin-bottom:5px;">Rent $${p.rent[0]}</div>
-                        <div style="display:flex; justify-content:space-between;"><span>1 House</span><span>$${p.rent[1]}</span></div>
-                        <div style="display:flex; justify-content:space-between;"><span>2 Houses</span><span>$${p.rent[2]}</span></div>
-                        <div style="display:flex; justify-content:space-between;"><span>3 Houses</span><span>$${p.rent[3]}</span></div>
-                        <div style="display:flex; justify-content:space-between;"><span>4 Houses</span><span>$${p.rent[4]}</span></div>
-                        <div style="display:flex; justify-content:space-between;"><span>HOTEL</span><span>$${p.rent[5]}</span></div>
-                        <div style="margin-top:10px; border-top:1px solid #ccc; padding-top:5px;">
-                            Mortgage: $${p.mortgage}<br>Build Cost: $${p.build}
-                        </div>
-                    </div>
-                </div>
-            `;
-            wrap.innerHTML = html;
+            // Create a deed card container
+            const card = document.createElement('div');
+            card.style.cssText = "background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;";
+            
+            // Build inner HTML manually to allow for conditional highlighting
+            // We use renderDeed helper logic inside here
+            
+            // Header
+            let html = `<div class="deed-header ${p.group}">${p.name}</div><div class="deed-body"><div style="text-align:center; margin-bottom:10px;">Rent $${p.rent[0]}</div>`;
+            
+            // Rent Rows with Highlights
+            const houseCount = p.houses || 0;
+            // Helper to check highlighting
+            const hl = (idx) => (houseCount === idx ? 'rent-highlight' : '');
+            
+            // If 0 houses, highlight base rent (handled crudely above or explicitly)
+            // Ideally highlighting row 0. We'll simplify:
+            
+            html += `<div class="rent-row ${hl(1)}"><span>1 House</span><span>$${p.rent[1]}</span></div>`;
+            html += `<div class="rent-row ${hl(2)}"><span>2 Houses</span><span>$${p.rent[2]}</span></div>`;
+            html += `<div class="rent-row ${hl(3)}"><span>3 Houses</span><span>$${p.rent[3]}</span></div>`;
+            html += `<div class="rent-row ${hl(4)}"><span>4 Houses</span><span>$${p.rent[4]}</span></div>`;
+            html += `<div class="rent-row ${hl(5)}"><span>HOTEL</span><span>$${p.rent[5]}</span></div>`;
+            
+            html += `<div style="margin-top:10px; border-top:1px solid #ccc; padding-top:5px; text-align:center;">Mortgage: $${p.mortgage}<br>Houses cost $${p.build}</div></div>`;
+            
+            card.innerHTML = html;
+            wrap.appendChild(card);
             cont.appendChild(wrap);
         });
 
@@ -1007,8 +1056,6 @@
     }
 
     function renderDeed(prop, elementId) {
-        // ... (Existing deed render logic reused in swipe)
-        // Kept for buying phase
         const head = document.querySelector(`#${elementId} .deed-header`);
         if(head) {
             head.className = `deed-header ${prop.group}`;
