@@ -1,449 +1,486 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Monopoly Authentic Board</title>
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<style>
-    /* --- VARIABLES --- */
-    :root { 
-        --board-bg: #d4eac8; 
-        --border: #000;
-        --brown: #8b4513; --lblue: #87ceeb; --pink: #ff69b4; --orange: #ffa500; 
-        --red: #ff0000; --yellow: #ffff00; --green: #008000; --dblue: #0000ff;
-    }
-    body { margin: 0; background: #222; font-family: 'Verdana', sans-serif; overflow: hidden; user-select: none; }
-    .hidden { display: none !important; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playable Monopoly Prototype</title>
+    <style>
+        :root {
+            --board-size: 800px; /* Adjust baseline size */
+        }
 
-    /* --- SETUP UI --- */
-    #ui-layer { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-    .panel { background: white; padding: 40px; border-radius: 4px; text-align: center; width: 320px; box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 2px solid #000; }
-    .btn { background: #ce0e2d; color: white; padding: 15px; font-size: 1.1rem; border: 2px solid #000; cursor: pointer; font-weight: bold; width: 100%; margin: 10px 0; text-transform: uppercase; }
-    .btn:hover { background: #b00b26; }
-    .input-code { width: 100%; padding: 10px; font-size: 1.5rem; text-align: center; border: 2px solid #000; margin: 10px 0; text-transform: uppercase; font-family: monospace; letter-spacing: 5px; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
 
-    /* --- THE BOARD --- */
-    #game-scene { height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center; background: #222; }
-    
-    #board {
-        width: 95vmin; height: 95vmin;
-        max-width: 900px; max-height: 900px;
-        background: var(--board-bg);
-        border: 2px solid var(--border);
-        display: grid;
-        /* 11x11 Grid. Corners ~13.2%, others ~8.17% */
-        grid-template-columns: 13.2% repeat(9, 1fr) 13.2%;
-        grid-template-rows: 13.2% repeat(9, 1fr) 13.2%;
-        position: relative;
-        box-shadow: 0 0 50px #000;
-    }
+        #game-container {
+            display: flex;
+            gap: 20px;
+            background-color: #34495e;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
 
-    /* --- SPACES --- */
-    .space {
-        border: 1px solid var(--border);
-        position: relative;
-        background: var(--board-bg);
-        font-size: 0.6vmin; 
-        font-weight: 700;
-        text-transform: uppercase;
-        text-align: center;
-        color: #000;
-        display: flex; align-items: center; justify-content: center;
-    }
+        /* --- THE BOARD --- */
+        #board-wrapper {
+            position: relative;
+            width: var(--board-size);
+            height: var(--board-size);
+            background-image: url('monopoly_board.png'); /* IMPORTANT: Must match your filename */
+            background-size: cover;
+            border-radius: 2px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
 
-    /* Internal Container for Rotation */
-    .rot-box {
-        width: 100%; height: 100%;
-        display: flex; flex-direction: column;
-    }
-    
-    /* Layout: Color bar is typically closest to center. 
-       We will rotate the .rot-box so 'top' is always the inner edge. */
-    .bar { height: 22%; width: 100%; border-bottom: 2px solid #000; box-sizing: border-box; }
-    .name { flex: 1; display: flex; align-items: center; justify-content: center; line-height: 1.2; padding: 0 2px; }
-    .icon { flex: 1; display: flex; align-items: center; justify-content: center; }
-    .icon svg { width: 70%; height: 70%; }
-    .price { height: 18%; display: flex; align-items: flex-start; justify-content: center; font-weight: normal; font-size: 0.55vmin; }
+        /* Player Tokens */
+        .token {
+            position: absolute;
+            width: 4%;
+            height: 4%;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            transition: all 0.5s ease-in-out;
+            z-index: 10;
+            /* Center the token on the coordinate point */
+            transform: translate(-50%, -50%); 
+        }
 
-    /* Rotations (Orientation: Bottom of text points to center) */
-    .rot-0 { transform: rotate(0deg); }       /* Bottom Row */
-    .rot-90 { transform: rotate(90deg); }     /* Left Row */
-    .rot-180 { transform: rotate(180deg); }   /* Top Row */
-    .rot-270 { transform: rotate(-90deg); }   /* Right Row */
+        #p1-token { background-color: red; }
+        #p2-token { background-color: blue; top: 50%; left: 50%;}
 
-    /* --- CORNERS --- */
-    .corner { width: 100%; height: 100%; position: relative; }
-    
-    /* GO */
-    .go-arrow { position: absolute; width: 70%; left: 15%; top: 45%; transform: rotate(180deg); fill: #ce0e2d; }
-    .go-text { position: absolute; top: 5%; left: 5%; transform: rotate(-45deg); font-size: 1.8vmin; font-weight: 900; }
+        /* Offset slightly so tokens don't perfectly overlap */
+        #p1-token.offset { margin-left: -2%; margin-top: -2%; }
+        #p2-token.offset { margin-left: 2%; margin-top: 2%; }
 
-    /* JAIL */
-    #jail-space { display: grid; grid-template-columns: 1fr 2.5fr; grid-template-rows: 2.5fr 1fr; padding: 0 !important; border: 1px solid #000; }
-    .jail-cell { grid-column: 2; grid-row: 1; background: #ff9900; border-left: 2px solid #000; border-bottom: 2px solid #000; display:flex; align-items:center; justify-content:center;}
-    .jail-v { grid-column: 1; grid-row: 1/3; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; transform: rotate(180deg); font-size: 1vmin;}
-    .jail-j { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: center; font-size: 1vmin; }
 
-    /* --- CENTER ART --- */
-    #center-board {
-        grid-column: 2/11; grid-row: 2/11;
-        position: relative;
-        pointer-events: none; /* Let clicks pass through if needed */
-    }
+        /* --- CONTROLS & UI --- */
+        #controls-container {
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
 
-    .logo-box {
-        position: absolute; top: 50%; left: 50%;
-        transform: translate(-50%, -50%) rotate(-45deg);
-        background: #ce0e2d; color: white;
-        padding: 1.2vmin 5vmin;
-        border: 3px solid white; outline: 2px solid black;
-        box-shadow: 1vmin 1vmin 0 rgba(0,0,0,0.15);
-        font-family: 'Arial Black', sans-serif; font-size: 6vmin; letter-spacing: -2px;
-    }
+        .panel {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+        }
 
-    .card-slot {
-        position: absolute; width: 14vmin; height: 9vmin;
-        border: 2px solid #000;
-        display: flex; align-items: center; justify-content: center;
-        text-align: center; font-weight: bold; font-size: 0.8vmin; transform: rotate(135deg);
-        box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
-    }
-    .slot-cc { top: 15%; left: 15%; background: #aae0fa; }
-    .slot-ch { bottom: 15%; right: 15%; background: #ff9900; }
+        h2 { margin-top: 0; }
 
-    /* --- TOKENS --- */
-    .token {
-        position: absolute; width: 3vmin; height: 3vmin;
-        border-radius: 50%; z-index: 100;
-        transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
-        box-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        border: 2px solid white;
-    }
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
 
-    /* --- PLAYER CONTROLS --- */
-    #controls {
-        position: absolute; bottom: 0; left: 0; width: 100%;
-        background: white; border-top: 4px solid #000;
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 15px 30px; box-sizing: border-box; z-index: 3000;
-    }
-    .ctrl-group { display: flex; gap: 10px; }
-    .c-btn { padding: 10px 20px; font-size: 1.2rem; border: 2px solid #000; cursor: pointer; font-weight: bold; text-transform: uppercase; }
-    .b-roll { background: #ce0e2d; color: white; }
-    .b-buy { background: #008000; color: white; }
-    .b-pass { background: #555; color: white; }
-    
-</style>
+        .p1-score { color: #ff6b6b; }
+        .p2-score { color: #54a0ff; }
+
+        #dice-area {
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            padding: 10px;
+            background: white;
+            color: black;
+            border-radius: 8px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1.1em;
+            cursor: pointer;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #2ecc71; }
+        button:disabled { background-color: #7f8c8d; cursor: not-allowed; }
+
+        #action-area {
+            display: none; /* Hidden until needed */
+            background-color: #e67e22;
+        }
+
+        #game-log {
+            height: 150px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            background: rgba(0,0,0,0.4);
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .log-entry { margin-bottom: 4px; }
+
+        /* Responsive adjustments for smaller screens */
+        @media (max-width: 1200px) {
+            :root { --board-size: 600px; }
+        }
+        @media (max-width: 950px) {
+            #game-container { flex-direction: column; }
+            #controls-container { width: var(--board-size); }
+            #game-log { height: 100px; }
+        }
+        @media (max-width: 650px) {
+            :root { --board-size: 95vw; }
+        }
+
+    </style>
 </head>
 <body>
 
-<div id="ui-layer">
-    <div id="panel-menu" class="panel">
-        <h1 style="font-family:'Arial Black'; margin-top:0;">MONOPOLY</h1>
-        <button class="btn" onclick="startHost()">Create Game</button>
-        <button class="btn" style="background:#0072bb" onclick="showJoin()">Join Game</button>
-    </div>
+    <h1>Monopoly Prototype</h1>
 
-    <div id="panel-join" class="panel hidden">
-        <h2>Enter Code</h2>
-        <input id="input-code" class="input-code" maxlength="4" placeholder="CODE">
-        <button class="btn" style="background:#008000" onclick="joinGame()">Connect</button>
-        <button class="btn" style="background:#555" onclick="location.reload()">Back</button>
-    </div>
+    <div id="game-container">
+        <div id="board-wrapper">
+            <div id="p1-token" class="token offset" style="top: 93%; left: 93%;"></div>
+            <div id="p2-token" class="token offset" style="top: 93%; left: 93%;"></div>
+        </div>
 
-    <div id="panel-lobby" class="panel hidden">
-        <h2>Lobby</h2>
-        <div id="disp-code" style="font-size:3rem; font-family:monospace; margin:10px 0; color:#ce0e2d;">----</div>
-        <div id="disp-status">Waiting for players...</div>
-        <button id="btn-start" class="btn hidden" style="background:#008000" onclick="hostStart()">START GAME</button>
-    </div>
-</div>
+        <div id="controls-container">
+            <div class="panel">
+                <h2>Players</h2>
+                <div class="player-info p1-score">Player 1 (Red): $<span id="p1-money">1500</span></div>
+                <div class="player-info p2-score">Player 2 (Blue): $<span id="p2-money">1500</span></div>
+                <p>Current Turn: <span id="current-player-turn" style="font-weight:bold; color: red;">Player 1</span></p>
+            </div>
 
-<div id="game-scene" class="hidden">
-    <div id="board">
-        <div id="center-board">
-            <div class="logo-box">MONOPOLY</div>
-            <div class="card-slot slot-cc">COMMUNITY<br>CHEST</div>
-            <div class="card-slot slot-ch">CHANCE<br><span style="font-size:2.5vmin; color:#ce0e2d">?</span></div>
-            <div id="turn-log" style="position:absolute; bottom:10%; left:50%; transform:translateX(-50%); background:white; border:2px solid #000; padding:5px 15px; font-weight:bold;">Waiting...</div>
+            <div class="panel">
+                <div id="dice-area">Roll Dice</div>
+            </div>
+
+            <button id="roll-btn">ROLL DICE</button>
+
+            <div class="panel" id="action-area">
+                <h3 id="property-name">Property Name</h3>
+                <p id="property-cost">Cost: $0</p>
+                <button id="buy-btn">BUY PROPERTY</button>
+            </div>
+
+            <div class="panel">
+                <h3>Game Log</h3>
+                <div id="game-log"></div>
+            </div>
         </div>
     </div>
-</div>
 
-<div id="controls" class="hidden">
-    <div>
-        <div id="p-name" style="font-weight:bold; font-size:1.2rem;">Player</div>
-        <div id="p-money" style="color:#008000; font-weight:bold;">$1500</div>
-    </div>
-    <div class="ctrl-group">
-        <button id="btn-roll" class="c-btn b-roll disabled" onclick="send('ROLL')">ROLL</button>
-        <button id="btn-buy" class="c-btn b-buy hidden" onclick="send('BUY')">BUY</button>
-        <button id="btn-pass" class="c-btn b-pass hidden" onclick="send('PASS')">PASS</button>
-    </div>
-</div>
 
-<script>
-// --- ICONS (SVG) ---
-const SVG = {
-    train: `<svg viewBox="0 0 100 100"><path d="M20,70 L80,70 L80,50 L70,50 L70,30 L60,30 L60,50 L40,50 L40,70 M30,70 A5,5 0 1,0 40,70 M60,70 A5,5 0 1,0 70,70" stroke="black" stroke-width="4" fill="none"/></svg>`,
-    bulb: `<svg viewBox="0 0 100 100"><path d="M35,20 A15,15 0 1,1 65,20 L65,60 L35,60 Z M35,60 L65,60 L60,80 L40,80 Z" stroke="black" stroke-width="3" fill="none"/></svg>`,
-    tap: `<svg viewBox="0 0 100 100"><path d="M20,40 L80,40 M50,40 L50,80 M30,20 L70,20 L70,40 L30,40 Z" stroke="black" stroke-width="3" fill="none"/></svg>`,
-    ring: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="25" stroke="black" stroke-width="4" fill="none"/><path d="M50,25 L55,15 L45,15 Z" fill="black"/></svg>`,
-    chest: `<svg viewBox="0 0 100 80"><rect x="10" y="20" width="80" height="50" rx="5" stroke="black" stroke-width="3" fill="none"/><path d="M10,35 L90,35" stroke="black" stroke-width="2"/></svg>`,
-    chance: `<text x="50" y="70" font-size="60" text-anchor="middle" font-family="serif" fill="#ce0e2d" font-weight="bold">?</text>`,
-    car: `<svg viewBox="0 0 100 50"><path d="M10,30 L90,30 L80,15 L20,15 Z M20,30 A5,5 0 1,0 30,30 M70,30 A5,5 0 1,0 80,30" fill="red"/></svg>`,
-    diamond: `<svg viewBox="0 0 100 100"><path d="M50,10 L80,50 L50,90 L20,50 Z" fill="black"/></svg>`,
-    police: `<svg viewBox="0 0 100 100"><path d="M30,20 L70,20 L80,40 L20,40 Z M20,40 L20,80 L80,80 L80,40" stroke="blue" stroke-width="3" fill="none"/></svg>`
-};
-
-// --- DATA: CLASSIC MONOPOLY ORDER ---
-// Order: Bottom Right (GO) -> Left -> Top -> Right -> Bottom Right
-const SPACES = [
-    {n:"GO", t:"go"},
-    {n:"MEDITER. AVE", p:60, c:"var(--brown)", t:"prop"},
-    {n:"COMM. CHEST", t:"icon", i:SVG.chest},
-    {n:"BALTIC AVE", p:60, c:"var(--brown)", t:"prop"},
-    {n:"INCOME TAX", p:200, t:"icon", i:SVG.diamond},
-    {n:"READING R.R.", p:200, t:"icon", i:SVG.train},
-    {n:"ORIENTAL AVE", p:100, c:"var(--lblue)", t:"prop"},
-    {n:"CHANCE", t:"icon", i:SVG.chance},
-    {n:"VERMONT AVE", p:100, c:"var(--lblue)", t:"prop"},
-    {n:"CONN. AVE", p:120, c:"var(--lblue)", t:"prop"},
-    {n:"JAIL", t:"jail"}, // Corner 2 (Bottom Left)
-    {n:"ST. CHARLES", p:140, c:"var(--pink)", t:"prop"},
-    {n:"ELECTRIC CO.", p:150, t:"icon", i:SVG.bulb},
-    {n:"STATES AVE", p:140, c:"var(--pink)", t:"prop"},
-    {n:"VIRGINIA AVE", p:160, c:"var(--pink)", t:"prop"},
-    {n:"PENN. R.R.", p:200, t:"icon", i:SVG.train},
-    {n:"ST. JAMES", p:180, c:"var(--orange)", t:"prop"},
-    {n:"COMM. CHEST", t:"icon", i:SVG.chest},
-    {n:"TENN. AVE", p:180, c:"var(--orange)", t:"prop"},
-    {n:"NEW YORK AVE", p:200, c:"var(--orange)", t:"prop"},
-    {n:"FREE PARKING", t:"fp"}, // Corner 3 (Top Left)
-    {n:"KENTUCKY AVE", p:220, c:"var(--red)", t:"prop"},
-    {n:"CHANCE", t:"icon", i:SVG.chance},
-    {n:"INDIANA AVE", p:220, c:"var(--red)", t:"prop"},
-    {n:"ILLINOIS AVE", p:240, c:"var(--red)", t:"prop"},
-    {n:"B. & O. R.R.", p:200, t:"icon", i:SVG.train},
-    {n:"ATLANTIC AVE", p:260, c:"var(--yellow)", t:"prop"},
-    {n:"VENTNOR AVE", p:260, c:"var(--yellow)", t:"prop"},
-    {n:"WATER WORKS", p:150, t:"icon", i:SVG.tap},
-    {n:"MARVIN GDN", p:280, c:"var(--yellow)", t:"prop"},
-    {n:"GO TO JAIL", t:"gtj"}, // Corner 4 (Top Right)
-    {n:"PACIFIC AVE", p:300, c:"var(--green)", t:"prop"},
-    {n:"N. CAROL AVE", p:300, c:"var(--green)", t:"prop"},
-    {n:"COMM. CHEST", t:"icon", i:SVG.chest},
-    {n:"PENN. AVE", p:320, c:"var(--green)", t:"prop"},
-    {n:"SHORT LINE", p:200, t:"icon", i:SVG.train},
-    {n:"CHANCE", t:"icon", i:SVG.chance},
-    {n:"PARK PLACE", p:350, c:"var(--dblue)", t:"prop"},
-    {n:"LUXURY TAX", p:100, t:"icon", i:SVG.ring},
-    {n:"BOARDWALK", p:400, c:"var(--dblue)", t:"prop"}
-];
-
-// --- LOGIC ---
-let peer, conn, myCode, players=[], turnIdx=0, boardState=[];
-
-function init() {
-    boardState = SPACES.map(s => ({...s, owner:null}));
-    renderBoard();
-}
-
-function renderBoard() {
-    const board = document.getElementById('board');
-    
-    SPACES.forEach((d, i) => {
-        const el = document.createElement('div');
-        el.className = 'space';
-        el.id = `s-${i}`;
-
-        // Grid Logic (11x11)
-        // 0=11,11 | 1-9=11,10..2 | 10=11,1
-        // 11-19=10..2,1 | 20=1,1
-        // 21-29=1,2..10 | 30=1,11
-        // 31-39=2..10,11
-        let r, c, rot;
-
-        if(i===0) { r=11; c=11; rot='rot-0'; }
-        else if(i<=9) { r=11; c=11-i; rot='rot-0'; }
-        else if(i===10) { r=11; c=1; rot='rot-0'; }
-        else if(i<=19) { r=11-(i-10); c=1; rot='rot-90'; }
-        else if(i===20) { r=1; c=1; rot='rot-0'; }
-        else if(i<=29) { r=1; c=(i-20)+1; rot='rot-180'; }
-        else if(i===30) { r=1; c=11; rot='rot-0'; }
-        else if(i<=39) { r=(i-30)+1; c=11; rot='rot-270'; }
+    <script>
+        // --- CONFIGURATION & STATE ---
         
-        el.style.gridRow = r;
-        el.style.gridColumn = c;
+        // MAPPING THE BOARD IMAGE
+        // This is the crucial part: defining the center point (in percentages) 
+        // of every square on the provided image, starting from GO clock-wise.
+        const boardMapping = [
+            { name: "GO", type: "go", top: 93, left: 93 }, // 0
+            { name: "Mediterranean Ave", type: "property", price: 60, rent: 2, owner: null, top: 93, left: 85.5 },
+            { name: "Community Chest (Bottom)", type: "chest", top: 93, left: 77.5 },
+            { name: "Baltic Ave", type: "property", price: 60, rent: 4, owner: null, top: 93, left: 69.5 },
+            { name: "Income Tax", type: "tax", cost: 200, top: 93, left: 61.5 },
+            { name: "Reading Railroad", type: "railroad", price: 200, rent: 25, owner: null, top: 93, left: 53.5 },
+            { name: "Oriental Ave", type: "property", price: 100, rent: 6, owner: null, top: 93, left: 45.5 },
+            { name: "Chance (Bottom)", type: "chance", top: 93, left: 37.5 },
+            { name: "Vermont Ave", type: "property", price: 100, rent: 6, owner: null, top: 93, left: 29.5 },
+            { name: "Connecticut Ave", type: "property", price: 120, rent: 8, owner: null, top: 93, left: 21.5 },
+            { name: "In Jail / Just Visiting", type: "jail", top: 93, left: 7 }, // 10
+            { name: "St. Charles Place", type: "property", price: 140, rent: 10, owner: null, top: 85.5, left: 7 },
+            { name: "Electric Company", type: "utility", price: 150, owner: null, top: 77.5, left: 7 },
+            { name: "States Ave", type: "property", price: 140, rent: 10, owner: null, top: 69.5, left: 7 },
+            { name: "Virginia Ave", type: "property", price: 160, rent: 12, owner: null, top: 61.5, left: 7 },
+            { name: "Pennsylvania Railroad", type: "railroad", price: 200, rent: 25, owner: null, top: 53.5, left: 7 },
+            { name: "St. James Place", type: "property", price: 180, rent: 14, owner: null, top: 45.5, left: 7 },
+            { name: "Community Chest (Left)", type: "chest", top: 37.5, left: 7 },
+            { name: "Tennessee Ave", type: "property", price: 180, rent: 14, owner: null, top: 29.5, left: 7 },
+            { name: "New York Ave", type: "property", price: 200, rent: 16, owner: null, top: 21.5, left: 7 },
+            { name: "Free Parking", type: "parking", top: 7, left: 7 }, // 20
+            { name: "Kentucky Ave", type: "property", price: 220, rent: 18, owner: null, top: 7, left: 21.5 },
+            { name: "Chance (Top)", type: "chance", top: 7, left: 29.5 },
+            { name: "Indiana Ave", type: "property", price: 220, rent: 18, owner: null, top: 7, left: 37.5 },
+            { name: "Illinois Ave", type: "property", price: 240, rent: 20, owner: null, top: 7, left: 45.5 },
+            { name: "B. & O. Railroad", type: "railroad", price: 200, rent: 25, owner: null, top: 7, left: 53.5 },
+            { name: "Atlantic Ave", type: "property", price: 260, rent: 22, owner: null, top: 7, left: 61.5 },
+            { name: "Ventnor Ave", type: "property", price: 260, rent: 22, owner: null, top: 7, left: 69.5 },
+            { name: "Water Works", type: "utility", price: 150, owner: null, top: 7, left: 77.5 },
+            { name: "Marvin Gardens", type: "property", price: 280, rent: 24, owner: null, top: 7, left: 85.5 },
+            { name: "Go To Jail", type: "gotojail", top: 7, left: 93 }, // 30
+            { name: "Pacific Ave", type: "property", price: 300, rent: 26, owner: null, top: 21.5, left: 93 },
+            { name: "North Carolina Ave", type: "property", price: 300, rent: 26, owner: null, top: 29.5, left: 93 },
+            { name: "Community Chest (Right)", type: "chest", top: 37.5, left: 93 },
+            { name: "Pennsylvania Ave", type: "property", price: 320, rent: 28, owner: null, top: 45.5, left: 93 },
+            { name: "Short Line Railroad", type: "railroad", price: 200, rent: 25, owner: null, top: 53.5, left: 93 },
+            { name: "Chance (Right)", type: "chance", top: 61.5, left: 93 },
+            { name: "Park Place", type: "property", price: 350, rent: 35, owner: null, top: 69.5, left: 93 },
+            { name: "Luxury Tax", type: "tax", cost: 100, top: 77.5, left: 93 },
+            { name: "Boardwalk", type: "property", price: 400, rent: 50, owner: null, top: 85.5, left: 93 },
+        ];
 
-        // Content
-        if(d.t === 'prop') {
-            el.innerHTML = `
-                <div class="rot-box ${rot}">
-                    <div class="bar" style="background:${d.c}"></div>
-                    <div class="name">${d.n}</div>
-                    <div class="price">$${d.p}</div>
-                </div>`;
-        } else if(d.t === 'icon') {
-            el.innerHTML = `
-                <div class="rot-box ${rot}">
-                    <div class="name" style="margin-top:5%">${d.n}</div>
-                    <div class="icon">${d.i}</div>
-                    <div class="price">${d.p ? '$'+d.p : ''}</div>
-                </div>`;
-        } else if(d.t === 'go') {
-            el.innerHTML = `<div class="corner"><div class="go-text">COLLECT<br>$200 SALARY<br>AS YOU PASS<br>GO</div><svg class="go-arrow" viewBox="0 0 100 50"><path d="M10,25 L90,25 M10,25 L30,5 M10,25 L30,45" stroke="#ce0e2d" stroke-width="8" fill="none"/></svg></div>`;
-        } else if(d.t === 'jail') {
-            el.id = 'jail-space';
-            el.innerHTML = `<div class="jail-cell"></div><div class="jail-v">JUST</div><div class="jail-j">VISITING</div>`;
-        } else if(d.t === 'fp') {
-            el.innerHTML = `<div class="rot-box rot-180" style="justify-content:center"><div class="name">FREE</div><div class="icon">${SVG.car}</div><div class="name">PARKING</div></div>`;
-        } else if(d.t === 'gtj') {
-            el.innerHTML = `<div class="rot-box rot-270" style="justify-content:center"><div class="name">GO TO</div><div class="icon">${SVG.police}</div><div class="name">JAIL</div></div>`;
+        let players = [
+            { id: 1, name: "Player 1", color: "red", position: 0, money: 1500, jail: false },
+            { id: 2, name: "Player 2", color: "blue", position: 0, money: 1500, jail: false }
+        ];
+        
+        let currentPlayerIndex = 0; // Start with Player 1 (index 0)
+        let doublesCount = 0;
+        let isRolling = false;
+
+        // --- DOM ELEMENTS ---
+        const rollBtn = document.getElementById('roll-btn');
+        const diceArea = document.getElementById('dice-area');
+        const gameLog = document.getElementById('game-log');
+        const actionArea = document.getElementById('action-area');
+        const buyBtn = document.getElementById('buy-btn');
+        const p1MoneyDisplay = document.getElementById('p1-money');
+        const p2MoneyDisplay = document.getElementById('p2-money');
+        const turnIndicator = document.getElementById('current-player-turn');
+
+        // --- GAME LOGIC ---
+
+        function addLog(message) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = message;
+            gameLog.appendChild(entry);
+            gameLog.scrollTop = gameLog.scrollHeight;
         }
 
-        board.appendChild(el);
-    });
-}
+        function updateUI() {
+            p1MoneyDisplay.textContent = players[0].money;
+            p2MoneyDisplay.textContent = players[1].money;
+            
+            const currentPlayer = players[currentPlayerIndex];
+            turnIndicator.textContent = currentPlayer.name;
+            turnIndicator.style.color = currentPlayer.color;
 
-// --- NETWORK ---
-function startHost() {
-    myCode = Math.random().toString(36).substring(2,6).toUpperCase();
-    peer = new Peer("mono-"+myCode);
-    peer.on('open', id => {
-        document.getElementById('panel-menu').classList.add('hidden');
-        document.getElementById('panel-lobby').classList.remove('hidden');
-        document.getElementById('disp-code').innerText = myCode;
-        init();
-    });
-    peer.on('connection', c => {
-        c.on('open', () => {
-            const colors = ['#ce0e2d', '#0000ff', '#008000', '#ffa500'];
-            const p = {id:c.peer, conn:c, name:`P${players.length+1}`, money:1500, pos:0, color:colors[players.length%4]};
-            players.push(p);
-            updateLobby();
-            c.send({type:'INIT', p:san(p)});
-        });
-        c.on('data', d => handleAct(c.peer, d));
-    });
-}
-
-function updateLobby() {
-    document.getElementById('disp-status').innerText = `${players.length} Players connected`;
-    if(players.length>0) document.getElementById('btn-start').classList.remove('hidden');
-}
-
-function hostStart() {
-    document.getElementById('ui-layer').classList.add('hidden');
-    document.getElementById('game-scene').classList.remove('hidden');
-    players.forEach(p => spawn(p));
-    broadcast();
-    sendTurn();
-}
-
-function spawn(p) {
-    const t = document.createElement('div');
-    t.className = 'token';
-    t.id = `t-${p.id}`;
-    t.style.background = p.color;
-    document.getElementById('board').appendChild(t);
-    move(p);
-}
-
-function move(p) {
-    const t = document.getElementById(`t-${p.id}`);
-    const s = document.getElementById(`s-${p.pos}`);
-    if(!t || !s) return;
-    const bR = document.getElementById('board').getBoundingClientRect();
-    const sR = s.getBoundingClientRect();
-    t.style.left = (sR.left - bR.left + sR.width/2 - t.offsetWidth/2) + 'px';
-    t.style.top = (sR.top - bR.top + sR.height/2 - t.offsetHeight/2) + 'px';
-}
-
-function handleAct(pid, d) {
-    const p = players.find(x => x.id === pid);
-    if(!p || players.indexOf(p) !== turnIdx) return;
-    
-    if(d.act === 'ROLL') {
-        const r = Math.ceil(Math.random()*6) + Math.ceil(Math.random()*6);
-        log(`${p.name} rolled ${r}`);
-        const old = p.pos;
-        p.pos = (p.pos + r) % 40;
-        if(p.pos < old) p.money += 200;
-        move(p);
-        
-        const s = boardState[p.pos];
-        if(s.t === 'prop' && !s.owner && p.money >= s.p) p.conn.send({type:'BUY_OPT'});
-        else setTimeout(nextTurn, 1500);
-    }
-    if(d.act === 'BUY') {
-        const s = boardState[p.pos];
-        if(!s.owner && p.money >= s.p) {
-            p.money -= s.p; s.owner = p.id;
-            document.getElementById(`s-${p.pos}`).style.boxShadow = `inset 0 0 0 4px ${p.color}`;
+            // Hide action area by default at start of turn
+            actionArea.style.display = 'none'; 
         }
-        nextTurn();
-    }
-    if(d.act === 'PASS') nextTurn();
-    broadcast();
-}
 
-function nextTurn() {
-    turnIdx = (turnIdx + 1) % players.length;
-    sendTurn();
-}
-function sendTurn() {
-    players.forEach((p, i) => {
-        if(i === turnIdx) { p.conn.send({type:'TURN'}); log(`Turn: ${p.name}`); }
-        else p.conn.send({type:'WAIT'});
-    });
-}
-function broadcast() { players.forEach(p => p.conn.send({type:'STATE', pl:players.map(san)})); }
-function san(p) { return {id:p.id, name:p.name, money:p.money, color:p.color}; }
-function log(m) { document.getElementById('turn-log').innerText = m; }
+        function movePlayerToken(playerIndex) {
+            const player = players[playerIndex];
+            const token = document.getElementById(`p${player.id}-token`);
+            const targetSquare = boardMapping[player.position];
 
-// --- CLIENT ---
-function showJoin() {
-    document.getElementById('panel-menu').classList.add('hidden');
-    document.getElementById('panel-join').classList.remove('hidden');
-}
-function joinGame() {
-    const c = document.getElementById('input-code').value.toUpperCase();
-    peer = new Peer();
-    peer.on('open', id => {
-        conn = peer.connect("mono-"+c);
-        conn.on('open', () => {
-            init(); // Client needs visual board
-            document.getElementById('ui-layer').classList.add('hidden');
-            document.getElementById('controls').classList.remove('hidden');
-            document.getElementById('game-scene').classList.remove('hidden');
-        });
-        conn.on('data', clientData);
-    });
-}
-function clientData(d) {
-    if(d.type === 'INIT') {
-        document.getElementById('p-name').innerText = d.p.name;
-        document.getElementById('p-name').style.color = d.p.color;
-    }
-    if(d.type === 'STATE') {
-        const me = d.pl.find(x => x.name === document.getElementById('p-name').innerText);
-        if(me) document.getElementById('p-money').innerText = `$${me.money}`;
-    }
-    // Buttons
-    document.getElementById('btn-roll').classList.add('disabled');
-    document.getElementById('btn-buy').classList.add('hidden');
-    document.getElementById('btn-pass').classList.add('hidden');
+            token.style.top = targetSquare.top + "%";
+            token.style.left = targetSquare.left + "%";
+        }
 
-    if(d.type === 'TURN') document.getElementById('btn-roll').classList.remove('disabled');
-    if(d.type === 'BUY_OPT') {
-        document.getElementById('btn-buy').classList.remove('hidden');
-        document.getElementById('btn-pass').classList.remove('hidden');
-    }
-}
-function send(a) { conn.send({act:a}); }
+        async function rollDice() {
+            if (isRolling) return;
+            isRolling = true;
+            rollBtn.disabled = true;
+            actionArea.style.display = 'none';
 
-</script>
+            // Simple dice animation effect
+            for(let i=0; i<10; i++) {
+                diceArea.textContent = `${Math.floor(Math.random()*6)+1} & ${Math.floor(Math.random()*6)+1}`;
+                await new Promise(r => setTimeout(r, 50));
+            }
+
+            const d1 = Math.floor(Math.random() * 6) + 1;
+            const d2 = Math.floor(Math.random() * 6) + 1;
+            const total = d1 + d2;
+            const isDoubles = d1 === d2;
+
+            diceArea.textContent = `${d1} & ${d2} (Total: ${total})`;
+            addLog(`${players[currentPlayerIndex].name} rolled ${d1} + ${d2} = ${total}.`);
+
+            if (isDoubles) {
+                doublesCount++;
+                addLog("Doubles!");
+            } else {
+                doublesCount = 0;
+            }
+            
+            // Handle Speeding (3 doubles goes to jail)
+            if (doublesCount >= 3) {
+                 addLog("Three doubles! Go to Jail.");
+                 sendToJail(currentPlayerIndex);
+                 endTurn(false); // End turn immediately, no doubles bonus roll
+                 return;
+            }
+
+            movePlayer(currentPlayerIndex, total);
+            
+            // If not doubles, turn ends after landing logic. If doubles, enable roll again.
+            if (!isDoubles) {
+                // Turn ends after the player interacts with the square (handled in handleLanding)
+            } else {
+                 addLog(`${players[currentPlayerIndex].name} gets to roll again.`);
+                 isRolling = false;
+                 rollBtn.disabled = false;
+            }
+        }
+
+        function movePlayer(pIdx, steps) {
+            const player = players[pIdx];
+            let newPos = player.position + steps;
+
+            // Handle passing GO
+            if (newPos >= 40) {
+                newPos = newPos % 40;
+                player.money += 200;
+                addLog(`${player.name} passed GO and collected $200.`);
+                updateUI();
+            }
+
+            player.position = newPos;
+            movePlayerToken(pIdx);
+            handleLanding(pIdx);
+        }
+
+        function sendToJail(pIdx) {
+            players[pIdx].position = 10; // Jail square index
+            players[pIdx].jail = true;
+            movePlayerToken(pIdx);
+            addLog(`${players[pIdx].name} is now in Jail.`);
+        }
+
+        function handleLanding(pIdx) {
+            const player = players[pIdx];
+            const square = boardMapping[player.position];
+            addLog(`${player.name} landed on ${square.name}.`);
+
+            // Basic interaction logic
+            switch (square.type) {
+                case 'property':
+                case 'railroad':
+                case 'utility':
+                    handlePropertyLanding(pIdx, square);
+                    break;
+                case 'tax':
+                    payTax(pIdx, square.cost);
+                    endTurnIfNoDoubles();
+                    break;
+                case 'gotojail':
+                    sendToJail(pIdx);
+                    endTurn(false); // Force turn end
+                    break;
+                // Simplified handling for complex squares for MVP
+                case 'chance':
+                case 'chest':
+                    addLog("Landed on Chance/Community Chest. (Card drawing not implemented in prototype).");
+                    endTurnIfNoDoubles();
+                    break;
+                case 'jail':
+                    addLog("Just visiting Jail.");
+                    endTurnIfNoDoubles();
+                    break;
+                case 'parking':
+                    addLog("Free Parking. Nothing happens.");
+                    endTurnIfNoDoubles();
+                    break;
+                case 'go':
+                    endTurnIfNoDoubles();
+                    break;
+            }
+        }
+
+        function handlePropertyLanding(pIdx, square) {
+            const player = players[pIdx];
+
+            if (square.owner === null) {
+                // Offer to buy
+                actionArea.style.display = 'block';
+                document.getElementById('property-name').textContent = square.name;
+                document.getElementById('property-cost').textContent = `Cost: $${square.price}`;
+                
+                buyBtn.onclick = function() {
+                    if (player.money >= square.price) {
+                        player.money -= square.price;
+                        square.owner = player.id;
+                        addLog(`${player.name} bought ${square.name} for $${square.price}.`);
+                        actionArea.style.display = 'none';
+                        updateUI();
+                        endTurnIfNoDoubles();
+                    } else {
+                        addLog("Not enough money!");
+                    }
+                };
+                // Note: In real monopoly, if you don't buy, it goes to auction. 
+                // For MVP, if they don't buy, they must click a "Pass" button (not implemented here to keep it simple, so they *must* buy or we auto-end turn. Let's auto end if they don't have money).
+                 if (player.money < square.price) {
+                      buyBtn.disabled = true;
+                      buyBtn.textContent = "Cannot Afford";
+                      // Auto end turn after a moment if they can't afford
+                      setTimeout(() => {
+                         actionArea.style.display = 'none';
+                         endTurnIfNoDoubles();
+                      }, 2000);
+                 } else {
+                      buyBtn.disabled = false;
+                      buyBtn.textContent = "BUY PROPERTY";
+                 }
+
+
+            } else if (square.owner !== player.id) {
+                // Pay rent
+                const ownerIdx = square.owner - 1;
+                // Simplified rent calculation (no house multiplier, simplified utility/railroad math)
+                let rentDue = square.rent || 25; // Default for RRs if rent missing
+
+                addLog(`${square.name} is owned by ${players[ownerIdx].name}. Rent is $${rentDue}.`);
+                player.money -= rentDue;
+                players[ownerIdx].money += rentDue;
+                updateUI();
+                endTurnIfNoDoubles();
+            } else {
+                addLog("You own this property.");
+                endTurnIfNoDoubles();
+            }
+        }
+
+        function payTax(pIdx, amount) {
+            players[pIdx].money -= amount;
+            addLog(`${players[pIdx].name} paid $${amount} tax.`);
+            updateUI();
+        }
+
+        // Helper to check if we should end turn based on doubles status
+        function endTurnIfNoDoubles() {
+             // If the buy button is active, don't end the turn yet.
+             if(actionArea.style.display === 'block' && !buyBtn.disabled) return;
+
+             const d1 = parseInt(diceArea.textContent.split(' ')[0]);
+             const d2 = parseInt(diceArea.textContent.split(' ')[2]);
+             if (d1 !== d2) {
+                 endTurn();
+             }
+        }
+
+
+        function endTurn(canRollAgain = true) {
+            isRolling = false;
+            rollBtn.disabled = false;
+            doublesCount = 0;
+            
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            updateUI();
+            addLog(`--- ${players[currentPlayerIndex].name}'s turn ---`);
+        }
+
+
+        // --- INITIALIZATION ---
+        rollBtn.addEventListener('click', rollDice);
+        updateUI();
+        // Initial placement
+        movePlayerToken(0);
+        movePlayerToken(1);
+        addLog("Game Started. Player 1's turn.");
+
+    </script>
 </body>
 </html>
