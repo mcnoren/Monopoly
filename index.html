@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Monopoly: Big Screen Edition</title>
+    <title>Monopoly: Ultimate Edition</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
             --bg-color: #1a1a1a;
             --sidebar-width: 300px;
-            --card-width: 280px;
+            --card-width: 300px;
         }
 
         * { box-sizing: border-box; }
@@ -25,208 +25,130 @@
             overflow: hidden;
         }
 
-        /* --- UTILITY: HIDE/SHOW SCREENS --- */
         .screen { display: none; width: 100%; height: 100%; }
         .active { display: flex; }
 
-        /* --- 1. LANDING SCREEN (Centered) --- */
+        /* --- 1. LANDING SCREEN --- */
         #landing-screen {
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column; align-items: center; justify-content: center;
             background: linear-gradient(135deg, #2c3e50, #000000);
         }
-        #landing-screen h1 { font-size: 3rem; margin-bottom: 30px; letter-spacing: 2px; }
+        #landing-screen h1 { font-size: 3rem; margin-bottom: 30px; letter-spacing: 2px; text-align: center; }
         .btn-landing {
-            padding: 20px 50px;
-            font-size: 1.5rem;
-            margin: 10px;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            width: 80%;
-            max-width: 400px;
-            font-weight: bold;
-            transition: transform 0.2s;
+            padding: 20px 50px; font-size: 1.5rem; margin: 10px; border: none; border-radius: 50px;
+            cursor: pointer; width: 80%; max-width: 400px; font-weight: bold;
         }
         #btn-host { background: #27ae60; color: white; }
         #btn-join { background: #3498db; color: white; }
         #join-code-input {
-            padding: 15px; font-size: 2rem; text-align: center;
-            border-radius: 10px; border: none; margin-bottom: 20px;
-            text-transform: uppercase; letter-spacing: 5px; width: 200px;
+            padding: 15px; font-size: 2rem; text-align: center; border-radius: 10px; border: none;
+            margin-bottom: 20px; text-transform: uppercase; letter-spacing: 5px; width: 200px;
         }
 
-        /* --- 2. HOST SCREEN (Landscape / TV Layout) --- */
-        #host-screen {
-            flex-direction: row; /* Side-by-side layout */
-            background-color: #2c3e50;
-        }
+        /* --- 2. HOST SCREEN (TV) --- */
+        #host-screen { flex-direction: row; background-color: #2c3e50; position: relative; }
 
-        /* Left Side: The Board */
         #board-area {
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #222;
-            position: relative;
+            flex-grow: 1; display: flex; align-items: center; justify-content: center;
+            background: #222; position: relative;
         }
-
         #board-wrapper {
-            /* Board scales to fit height, ensuring it stays square */
-            height: 95vh; 
-            width: 95vh;
-            background-image: url('monopoly_board.png');
-            background-size: cover;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
-            position: relative;
-            border-radius: 4px;
+            height: 95vh; width: 95vh; background-image: url('monopoly_board.png');
+            background-size: cover; box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            position: relative; border-radius: 4px;
         }
-
-        /* Right Side: Info Panel */
         #host-sidebar {
-            width: var(--sidebar-width);
-            background: rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            border-left: 2px solid rgba(255,255,255,0.1);
+            width: var(--sidebar-width); background: rgba(0,0,0,0.3); display: flex;
+            flex-direction: column; padding: 20px; border-left: 2px solid rgba(255,255,255,0.1);
         }
+        .host-header { font-size: 1.2rem; color: #bdc3c7; margin-bottom: 20px; text-align: center; }
+        .host-code { font-size: 3rem; color: #f1c40f; font-weight: bold; display: block; letter-spacing: 3px; }
+        
+        /* Host Card Popup */
+        #host-card-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 100;
+        }
+        .big-card {
+            width: 400px; height: 250px; background: white; color: black; border-radius: 15px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; text-align: center; box-shadow: 0 0 30px rgba(255,255,255,0.2);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .big-card h2 { margin: 0 0 15px 0; font-size: 2rem; text-transform: uppercase; }
+        .big-card p { font-size: 1.5rem; }
+        .card-chance { border: 10px solid #e67e22; }
+        .card-chest { border: 10px solid #3498db; }
 
-        .host-header { font-size: 1.2rem; color: #bdc3c7; margin-bottom: 20px; text-align: center;}
-        .host-code { font-size: 3rem; color: #f1c40f; font-weight: bold; display: block; letter-spacing: 3px; margin-top: 5px; }
-
-        #player-list { flex-grow: 1; }
         .player-card {
-            background: rgba(255,255,255,0.1);
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: rgba(255,255,255,0.1); padding: 15px; margin-bottom: 10px; border-radius: 8px;
+            display: flex; justify-content: space-between; align-items: center;
         }
         .p-avatar { width: 30px; height: 30px; border-radius: 50%; border: 2px solid white; }
         .p-money { font-weight: bold; color: #2ecc71; }
-        
-        #game-log {
-            height: 200px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 8px;
-            padding: 10px;
-            font-size: 0.9rem;
-            overflow-y: auto;
-            color: #bdc3c7;
-        }
-
-        /* Tokens on Board */
         .token {
-            position: absolute;
-            width: 4%; height: 4%;
-            border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 4px 4px 8px rgba(0,0,0,0.8);
-            transform: translate(-50%, -50%);
-            transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1);
-            z-index: 10;
+            position: absolute; width: 4%; height: 4%; border-radius: 50%; border: 3px solid white;
+            box-shadow: 4px 4px 8px rgba(0,0,0,0.8); transform: translate(-50%, -50%);
+            transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 10;
         }
         .owner-marker {
-            position: absolute;
-            width: 2.5%; height: 2.5%;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 5;
-            box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.8);
+            position: absolute; width: 2.5%; height: 2.5%; border-radius: 50%;
+            transform: translate(-50%, -50%); z-index: 5; border: 1px solid rgba(255,255,255,0.8);
         }
 
-        /* --- 3. CLIENT SCREEN (Portrait / Phone Layout) --- */
+        /* --- 3. CLIENT SCREEN (PHONE) --- */
         #client-screen {
-            flex-direction: column;
-            background-color: #34495e;
-            padding: 20px;
-            justify-content: space-between; /* Space out header, content, footer */
+            flex-direction: column; background-color: #34495e; padding: 15px;
+            justify-content: space-between; overflow-y: auto;
         }
+        #c-header { text-align: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        #c-balance { font-size: 2.5rem; color: #2ecc71; font-weight: bold; margin-top: 5px; }
+        
+        #c-main-area { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin: 10px 0; }
 
-        #c-header {
-            text-align: center;
-            padding-bottom: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        #c-balance { font-size: 3rem; color: #2ecc71; font-weight: bold; margin-top: 10px; }
-
-        /* The Main Interaction Area (Middle) */
-        #c-main-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-        }
-
-        /* PROPERTY CARD STYLING */
+        /* REALISTIC DEED CARD */
         .deed-card {
-            width: var(--card-width);
-            background-color: white;
-            border: 1px solid black;
-            color: black;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            animation: slideUp 0.3s ease-out;
+            width: 100%; max-width: 320px; background-color: white; border: 1px solid black; color: black;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5); display: none; flex-direction: column;
+            animation: slideUp 0.3s ease-out; font-family: 'Arial Narrow', Arial, sans-serif;
         }
-        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
         .deed-header {
-            padding: 20px 10px;
-            text-align: center;
-            border: 1px solid black;
-            margin: 5px 5px 0 5px;
-            font-weight: bold;
-            font-size: 1.2rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: black; /* Text usually black unless dark background */
+            padding: 15px 5px; text-align: center; border: 2px solid black; margin: 5px;
+            font-weight: 900; font-size: 1.4rem; text-transform: uppercase; letter-spacing: 1px; color: black;
         }
-        .deed-body {
-            padding: 20px;
-            text-align: center;
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-        .deed-price { font-size: 1.5rem; font-weight: bold; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px; }
+        .deed-body { padding: 0 15px 15px 15px; text-align: center; font-size: 0.95rem; }
+        .rent-row { display: flex; justify-content: space-between; margin: 4px 0; }
+        .rent-base { text-align: center; margin-bottom: 10px; font-size: 1.1rem; }
+        .house-stats { border-bottom: 1px solid #aaa; padding-bottom: 5px; margin-bottom: 5px; }
+        .mortgage-info { font-size: 0.85rem; font-style: italic; margin-top: 10px; color: #444; }
+        .price-tag { font-size: 1.5rem; font-weight: bold; background: black; color: white; padding: 5px; margin-top: 10px; }
 
-        /* Controls (Bottom) */
-        #c-controls {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+        /* CLIENT POPUP CARD (Chance/Chest) */
+        .popup-card {
+            width: 100%; max-width: 320px; padding: 30px; border-radius: 10px; text-align: center;
+            display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: popIn 0.3s;
         }
+        .popup-chance { background: #e67e22; color: white; }
+        .popup-chest { background: #3498db; color: white; }
+        .popup-title { font-size: 2rem; font-weight: bold; margin-bottom: 15px; }
+        .popup-text { font-size: 1.2rem; margin-bottom: 20px; }
 
         .btn-action {
-            width: 100%;
-            padding: 25px;
-            font-size: 1.3rem;
-            border: none;
-            border-radius: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
-            transition: all 0.1s;
+            width: 100%; padding: 20px; font-size: 1.3rem; border: none; border-radius: 12px;
+            font-weight: bold; cursor: pointer; margin-bottom: 10px; box-shadow: 0 4px 0 rgba(0,0,0,0.2);
         }
         .btn-action:active { transform: translateY(4px); box-shadow: none; }
-        
         .btn-roll { background-color: #e67e22; color: white; display: none; }
         .btn-buy { background-color: #27ae60; color: white; display: none; }
         .btn-pass { background-color: #c0392b; color: white; display: none; }
-        
-        .waiting-text { font-size: 1.2rem; color: #95a5a6; animation: pulse 1s infinite; display: none;}
+        .btn-ok { background-color: white; color: #333; display: none; }
+
+        .waiting-text { font-size: 1.2rem; color: #95a5a6; animation: pulse 1s infinite; display: none; margin-top: 20px; }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
 
-        /* Colors for JS mapping */
+        /* Colors */
         .bg-brown { background-color: #8b4513; color: white; }
         .bg-lightblue { background-color: #87ceeb; }
         .bg-pink { background-color: #ff69b4; }
@@ -235,20 +157,18 @@
         .bg-yellow { background-color: #ffff00; }
         .bg-green { background-color: #008000; color: white; }
         .bg-darkblue { background-color: #00008b; color: white; }
-        .bg-black { background-color: #000; color: white; } /* Stations */
-        .bg-gray { background-color: #7f8c8d; color: white; } /* Utilities */
+        .bg-black { background-color: #000; color: white; }
+        .bg-gray { background-color: #7f8c8d; color: white; }
         
-        .p-red { background: #e74c3c; }
-        .p-blue { background: #3498db; }
-        .p-green { background: #2ecc71; }
-        .p-yellow { background: #f1c40f; }
+        .p-red { background: #e74c3c; } .p-blue { background: #3498db; }
+        .p-green { background: #2ecc71; } .p-yellow { background: #f1c40f; }
 
     </style>
 </head>
 <body>
 
     <div id="landing-screen" class="screen active">
-        <h1>MONOPOLY<br><span style="font-size:1rem; letter-spacing: 5px; font-weight: normal;">CONNECTED</span></h1>
+        <h1>MONOPOLY<br><span style="font-size:1rem; letter-spacing: 5px; font-weight: normal;">ULTIMATE</span></h1>
         <button id="btn-host" class="btn-landing" onclick="initHost()">HOST (TV)</button>
         <div style="height:20px;"></div>
         <input type="text" id="join-code-input" placeholder="CODE" maxlength="4">
@@ -256,23 +176,21 @@
     </div>
 
     <div id="host-screen" class="screen">
+        <div id="host-card-overlay">
+            <div id="host-big-card" class="big-card">
+                <h2 id="h-card-title">CHANCE</h2>
+                <p id="h-card-text">Advance to Go</p>
+            </div>
+        </div>
+
         <div id="board-area">
-            <div id="board-wrapper">
-                </div>
+            <div id="board-wrapper"></div>
         </div>
         <div id="host-sidebar">
-            <div class="host-header">
-                JOIN CODE
-                <span class="host-code" id="display-code">----</span>
-                <button onclick="startGame()" id="start-btn" style="margin-top:10px; padding: 10px 20px; background:#27ae60; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">START GAME</button>
-            </div>
-            
-            <div id="player-list">
-                </div>
-
-            <div id="game-log">
-                <div>Waiting for players...</div>
-            </div>
+            <div class="host-header">CODE: <span class="host-code" id="display-code">----</span></div>
+            <button onclick="startGame()" id="start-btn" style="width:100%; padding: 10px; background:#27ae60; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer; margin-bottom: 20px;">START GAME</button>
+            <div id="player-list"></div>
+            <div id="game-log" style="margin-top:auto; height:100px; overflow:hidden; font-size:0.8rem; color:#888;"></div>
         </div>
     </div>
 
@@ -283,16 +201,29 @@
         </div>
 
         <div id="c-main-area">
-            <div id="msg-waiting" class="waiting-text">Waiting for host...</div>
+            <div id="msg-waiting" class="waiting-text">Waiting...</div>
             
+            <div id="popup-card" class="popup-card">
+                <div id="pop-title" class="popup-title">?</div>
+                <div id="pop-text" class="popup-text">...</div>
+            </div>
+
             <div id="deed-card" class="deed-card">
                 <div id="deed-header" class="deed-header">TITLE</div>
                 <div class="deed-body">
-                    <div>RENT <span id="deed-rent">$0</span></div>
-                    <div style="font-size: 0.8em; color: #666; margin-top: 10px;">
-                        (House rules not displayed)
+                    <div class="rent-base">Rent <span id="r-0">$0</span></div>
+                    <div class="house-stats">
+                        <div class="rent-row">With 1 House <span id="r-1">$0</span></div>
+                        <div class="rent-row">With 2 Houses <span id="r-2">$0</span></div>
+                        <div class="rent-row">With 3 Houses <span id="r-3">$0</span></div>
+                        <div class="rent-row">With 4 Houses <span id="r-4">$0</span></div>
+                        <div class="rent-row" style="font-weight:bold;">With HOTEL <span id="r-h">$0</span></div>
                     </div>
-                    <div class="deed-price">PRICE: <span id="deed-cost">$0</span></div>
+                    <div class="mortgage-info">Mortgage Value: <span id="m-val">$0</span></div>
+                    <div class="mortgage-info">Houses cost <span id="h-cost">$0</span> each</div>
+                    <div class="mortgage-info">Hotels, <span id="h-cost2">$0</span> plus 4 houses</div>
+                    
+                    <div class="price-tag">PRICE <span id="d-price">$0</span></div>
                 </div>
             </div>
         </div>
@@ -301,122 +232,118 @@
             <button id="btn-roll" class="btn-action btn-roll" onclick="sendAction('ROLL')">ROLL DICE</button>
             <button id="btn-buy" class="btn-action btn-buy" onclick="sendAction('BUY')">BUY</button>
             <button id="btn-pass" class="btn-action btn-pass" onclick="sendAction('PASS')">PASS</button>
+            <button id="btn-ok" class="btn-action btn-ok" onclick="sendAction('OK')">OK</button>
         </div>
     </div>
 
     <script>
-        // --- DATA & CONFIG ---
-        const APP_ID = "poly-v3-";
+        const APP_ID = "poly-v4-";
         const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-        // Board Map with Color Groups for the Card UI
+        // --- DATA ---
+        // Complete Data with Rents
         const boardMap = [
             { name: "GO", type: "go", top: 93, left: 93 },
-            { name: "Mediterranean Ave", type: "prop", price: 60, rent: 2, group: "bg-brown", owner: null, top: 93, left: 85.5 },
-            { name: "Community Chest", type: "chest", top: 93, left: 77.5 },
-            { name: "Baltic Ave", type: "prop", price: 60, rent: 4, group: "bg-brown", owner: null, top: 93, left: 69.5 },
+            { name: "Mediter. Ave", type: "prop", group: "bg-brown", price: 60, rent: [2, 10, 30, 90, 160, 250], mortgage: 30, houseCost: 50, owner: null, top: 93, left: 85.5 },
+            { name: "Comm. Chest", type: "chest", top: 93, left: 77.5 },
+            { name: "Baltic Ave", type: "prop", group: "bg-brown", price: 60, rent: [4, 20, 60, 180, 320, 450], mortgage: 30, houseCost: 50, owner: null, top: 93, left: 69.5 },
             { name: "Income Tax", type: "tax", cost: 200, top: 93, left: 61.5 },
-            { name: "Reading RR", type: "prop", price: 200, rent: 25, group: "bg-black", owner: null, top: 93, left: 53.5 },
-            { name: "Oriental Ave", type: "prop", price: 100, rent: 6, group: "bg-lightblue", owner: null, top: 93, left: 45.5 },
+            { name: "Reading RR", type: "prop", group: "bg-black", price: 200, rent: [25, 50, 100, 200, 0, 0], mortgage: 100, houseCost: 0, owner: null, top: 93, left: 53.5 },
+            { name: "Oriental Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6, 30, 90, 270, 400, 550], mortgage: 50, houseCost: 50, owner: null, top: 93, left: 45.5 },
             { name: "Chance", type: "chance", top: 93, left: 37.5 },
-            { name: "Vermont Ave", type: "prop", price: 100, rent: 6, group: "bg-lightblue", owner: null, top: 93, left: 29.5 },
-            { name: "Connecticut Ave", type: "prop", price: 120, rent: 8, group: "bg-lightblue", owner: null, top: 93, left: 21.5 },
+            { name: "Vermont Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6, 30, 90, 270, 400, 550], mortgage: 50, houseCost: 50, owner: null, top: 93, left: 29.5 },
+            { name: "Conn. Ave", type: "prop", group: "bg-lightblue", price: 120, rent: [8, 40, 100, 300, 450, 600], mortgage: 60, houseCost: 50, owner: null, top: 93, left: 21.5 },
             { name: "Jail", type: "jail", top: 93, left: 7 },
-            { name: "St. Charles Place", type: "prop", price: 140, rent: 10, group: "bg-pink", owner: null, top: 85.5, left: 7 },
-            { name: "Electric Co", type: "prop", price: 150, rent: 15, group: "bg-gray", owner: null, top: 77.5, left: 7 },
-            { name: "States Ave", type: "prop", price: 140, rent: 10, group: "bg-pink", owner: null, top: 69.5, left: 7 },
-            { name: "Virginia Ave", type: "prop", price: 160, rent: 12, group: "bg-pink", owner: null, top: 61.5, left: 7 },
-            { name: "Penn RR", type: "prop", price: 200, rent: 25, group: "bg-black", owner: null, top: 53.5, left: 7 },
-            { name: "St. James Place", type: "prop", price: 180, rent: 14, group: "bg-orange", owner: null, top: 45.5, left: 7 },
+            { name: "St. Charles", type: "prop", group: "bg-pink", price: 140, rent: [10, 50, 150, 450, 625, 750], mortgage: 70, houseCost: 100, owner: null, top: 85.5, left: 7 },
+            { name: "Electric Co", type: "prop", group: "bg-gray", price: 150, rent: [0,0,0,0,0,0], mortgage: 75, houseCost: 0, owner: null, top: 77.5, left: 7 },
+            { name: "States Ave", type: "prop", group: "bg-pink", price: 140, rent: [10, 50, 150, 450, 625, 750], mortgage: 70, houseCost: 100, owner: null, top: 69.5, left: 7 },
+            { name: "Virginia Ave", type: "prop", group: "bg-pink", price: 160, rent: [12, 60, 180, 500, 700, 900], mortgage: 80, houseCost: 100, owner: null, top: 61.5, left: 7 },
+            { name: "Penn RR", type: "prop", group: "bg-black", price: 200, rent: [25, 50, 100, 200, 0, 0], mortgage: 100, houseCost: 0, owner: null, top: 53.5, left: 7 },
+            { name: "St. James", type: "prop", group: "bg-orange", price: 180, rent: [14, 70, 200, 550, 750, 950], mortgage: 90, houseCost: 100, owner: null, top: 45.5, left: 7 },
             { name: "Comm. Chest", type: "chest", top: 37.5, left: 7 },
-            { name: "Tennessee Ave", type: "prop", price: 180, rent: 14, group: "bg-orange", owner: null, top: 29.5, left: 7 },
-            { name: "New York Ave", type: "prop", price: 200, rent: 16, group: "bg-orange", owner: null, top: 21.5, left: 7 },
+            { name: "Tennessee", type: "prop", group: "bg-orange", price: 180, rent: [14, 70, 200, 550, 750, 950], mortgage: 90, houseCost: 100, owner: null, top: 29.5, left: 7 },
+            { name: "New York", type: "prop", group: "bg-orange", price: 200, rent: [16, 80, 220, 600, 800, 1000], mortgage: 100, houseCost: 100, owner: null, top: 21.5, left: 7 },
             { name: "Free Parking", type: "parking", top: 7, left: 7 },
-            { name: "Kentucky Ave", type: "prop", price: 220, rent: 18, group: "bg-red", owner: null, top: 7, left: 21.5 },
+            { name: "Kentucky", type: "prop", group: "bg-red", price: 220, rent: [18, 90, 250, 700, 875, 1050], mortgage: 110, houseCost: 150, owner: null, top: 7, left: 21.5 },
             { name: "Chance", type: "chance", top: 7, left: 29.5 },
-            { name: "Indiana Ave", type: "prop", price: 220, rent: 18, group: "bg-red", owner: null, top: 7, left: 37.5 },
-            { name: "Illinois Ave", type: "prop", price: 240, rent: 20, group: "bg-red", owner: null, top: 7, left: 45.5 },
-            { name: "B&O RR", type: "prop", price: 200, rent: 25, group: "bg-black", owner: null, top: 7, left: 53.5 },
-            { name: "Atlantic Ave", type: "prop", price: 260, rent: 22, group: "bg-yellow", owner: null, top: 7, left: 61.5 },
-            { name: "Ventnor Ave", type: "prop", price: 260, rent: 22, group: "bg-yellow", owner: null, top: 7, left: 69.5 },
-            { name: "Water Works", type: "prop", price: 150, rent: 15, group: "bg-gray", owner: null, top: 7, left: 77.5 },
-            { name: "Marvin Gardens", type: "prop", price: 280, rent: 24, group: "bg-yellow", owner: null, top: 7, left: 85.5 },
+            { name: "Indiana", type: "prop", group: "bg-red", price: 220, rent: [18, 90, 250, 700, 875, 1050], mortgage: 110, houseCost: 150, owner: null, top: 7, left: 37.5 },
+            { name: "Illinois", type: "prop", group: "bg-red", price: 240, rent: [20, 100, 300, 750, 925, 1100], mortgage: 120, houseCost: 150, owner: null, top: 7, left: 45.5 },
+            { name: "B&O RR", type: "prop", group: "bg-black", price: 200, rent: [25, 50, 100, 200, 0, 0], mortgage: 100, houseCost: 0, owner: null, top: 7, left: 53.5 },
+            { name: "Atlantic", type: "prop", group: "bg-yellow", price: 260, rent: [22, 110, 330, 800, 975, 1150], mortgage: 130, houseCost: 150, owner: null, top: 7, left: 61.5 },
+            { name: "Ventnor", type: "prop", group: "bg-yellow", price: 260, rent: [22, 110, 330, 800, 975, 1150], mortgage: 130, houseCost: 150, owner: null, top: 7, left: 69.5 },
+            { name: "Water Works", type: "prop", group: "bg-gray", price: 150, rent: [0,0,0,0,0,0], mortgage: 75, houseCost: 0, owner: null, top: 7, left: 77.5 },
+            { name: "Marvin G.", type: "prop", group: "bg-yellow", price: 280, rent: [24, 120, 360, 850, 1025, 1200], mortgage: 140, houseCost: 150, owner: null, top: 7, left: 85.5 },
             { name: "Go To Jail", type: "gotojail", top: 7, left: 93 },
-            { name: "Pacific Ave", type: "prop", price: 300, rent: 26, group: "bg-green", owner: null, top: 21.5, left: 93 },
-            { name: "N. Carolina Ave", type: "prop", price: 300, rent: 26, group: "bg-green", owner: null, top: 29.5, left: 93 },
+            { name: "Pacific", type: "prop", group: "bg-green", price: 300, rent: [26, 130, 390, 900, 1100, 1275], mortgage: 150, houseCost: 200, owner: null, top: 21.5, left: 93 },
+            { name: "N. Carolina", type: "prop", group: "bg-green", price: 300, rent: [26, 130, 390, 900, 1100, 1275], mortgage: 150, houseCost: 200, owner: null, top: 29.5, left: 93 },
             { name: "Comm. Chest", type: "chest", top: 37.5, left: 93 },
-            { name: "Penn Ave", type: "prop", price: 320, rent: 28, group: "bg-green", owner: null, top: 45.5, left: 93 },
-            { name: "Short Line", type: "prop", price: 200, rent: 25, group: "bg-black", owner: null, top: 53.5, left: 93 },
+            { name: "Penn Ave", type: "prop", group: "bg-green", price: 320, rent: [28, 150, 450, 1000, 1200, 1400], mortgage: 160, houseCost: 200, owner: null, top: 45.5, left: 93 },
+            { name: "Short Line", type: "prop", group: "bg-black", price: 200, rent: [25, 50, 100, 200, 0, 0], mortgage: 100, houseCost: 0, owner: null, top: 53.5, left: 93 },
             { name: "Chance", type: "chance", top: 61.5, left: 93 },
-            { name: "Park Place", type: "prop", price: 350, rent: 35, group: "bg-darkblue", owner: null, top: 69.5, left: 93 },
+            { name: "Park Place", type: "prop", group: "bg-darkblue", price: 350, rent: [35, 175, 500, 1100, 1300, 1500], mortgage: 175, houseCost: 200, owner: null, top: 69.5, left: 93 },
             { name: "Luxury Tax", type: "tax", cost: 100, top: 77.5, left: 93 },
-            { name: "Boardwalk", type: "prop", price: 400, rent: 50, group: "bg-darkblue", owner: null, top: 85.5, left: 93 },
+            { name: "Boardwalk", type: "prop", group: "bg-darkblue", price: 400, rent: [50, 200, 600, 1400, 1700, 2000], mortgage: 200, houseCost: 200, owner: null, top: 85.5, left: 93 },
         ];
 
-        // --- GLOBAL STATE ---
+        const chanceDeck = [
+            { text: "Advance to GO", action: "move", target: 0 },
+            { text: "Go to Jail", action: "gotojail" },
+            { text: "Bank pays you dividend of $50", action: "money", amount: 50 },
+            { text: "Speeding Fine $15", action: "money", amount: -15 },
+            { text: "Take a trip to Reading Railroad", action: "move", target: 5 },
+            { text: "Advance to Boardwalk", action: "move", target: 39 }
+        ];
+
+        const chestDeck = [
+            { text: "Advance to GO", action: "move", target: 0 },
+            { text: "Doctor's fees. Pay $50", action: "money", amount: -50 },
+            { text: "Bank error in your favor. Collect $200", action: "money", amount: 200 },
+            { text: "Go to Jail", action: "gotojail" },
+            { text: "From sale of stock you get $50", action: "money", amount: 50 }
+        ];
+
+        // --- STATE ---
         let peer;
         let connections = {};
         
-        // Host State
         let gameState = {
             players: [],
             turnIndex: 0,
-            turnPhase: 'ROLLING', // ROLLING, DECIDING
+            turnPhase: 'ROLLING', // ROLLING, DECIDING, ACKNOWLEDGING (for cards)
             pendingSquareIdx: null,
+            activeCard: null, // { title, text, type }
             started: false
         };
 
-        // Client State
         let myId = null;
         let hostConn = null;
-
-        // --- UTILS ---
-        function switchScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
 
         // --- HOST LOGIC ---
         function initHost() {
             let code = "";
             for(let i=0; i<4; i++) code += CODE_CHARS.charAt(Math.floor(Math.random() * CODE_CHARS.length));
-            
             switchScreen('host-screen');
             document.getElementById('display-code').innerText = code;
-
             peer = new Peer(APP_ID + code);
             peer.on('connection', handleConnection);
-            peer.on('error', err => console.log(err));
         }
 
         function handleConnection(conn) {
             if(gameState.started) { conn.close(); return; }
-
             const pId = gameState.players.length;
             if(pId >= 4) return;
 
-            const newPlayer = {
-                id: pId,
-                name: ["Red", "Blue", "Green", "Yellow"][pId],
-                colorClass: ["p-red", "p-blue", "p-green", "p-yellow"][pId],
-                money: 1500,
-                position: 0,
-                connId: conn.peer
-            };
-
+            const newPlayer = { id: pId, name: ["Red", "Blue", "Green", "Yellow"][pId], colorClass: ["p-red", "p-blue", "p-green", "p-yellow"][pId], money: 1500, position: 0 };
             gameState.players.push(newPlayer);
             connections[pId] = conn;
 
-            // Update Host UI
             renderPlayerList();
             createToken(newPlayer);
-            log(`Player ${newPlayer.name} joined.`);
-
+            
             conn.on('open', () => {
                 conn.send({ type: 'WELCOME', player: newPlayer });
                 broadcastState();
             });
-
             conn.on('data', data => handleAction(pId, data));
         }
 
@@ -424,43 +351,40 @@
             if(gameState.players.length < 1) return alert("Need players!");
             gameState.started = true;
             document.getElementById('start-btn').style.display = 'none';
-            log("Game Started!");
             broadcastState();
         }
 
         function handleAction(pId, action) {
             if(gameState.turnIndex !== pId) return;
-
             const player = gameState.players[pId];
 
             if(action.type === 'ROLL' && gameState.turnPhase === 'ROLLING') {
                 const roll = Math.ceil(Math.random()*6) + Math.ceil(Math.random()*6);
                 log(`${player.name} rolled ${roll}`);
-                
-                // Move
                 player.position = (player.position + roll) % 40;
-                if(player.position < roll && player.position !== 0) { // Passed Go
-                    player.money += 200;
-                    log(`${player.name} passed GO (+200)`);
-                }
+                if(player.position < roll && player.position !== 0) { player.money += 200; log("Passed GO (+200)"); }
                 updateTokenPos(player);
-                
-                // Logic
                 setTimeout(() => handleLanding(player, player.position), 800);
             }
-            else if(action.type === 'BUY' && gameState.turnPhase === 'DECIDING') {
+            else if(action.type === 'BUY') {
                 const sq = boardMap[gameState.pendingSquareIdx];
-                if(player.money >= sq.price) {
-                    player.money -= sq.price;
-                    sq.owner = player.id;
-                    addOwnerMarker(gameState.pendingSquareIdx, player.colorClass);
-                    log(`${player.name} bought ${sq.name}`);
-                }
+                player.money -= sq.price;
+                sq.owner = player.id;
+                addOwnerMarker(gameState.pendingSquareIdx, player.colorClass);
+                log(`Bought ${sq.name}`);
                 endTurn();
             }
-            else if(action.type === 'PASS' && gameState.turnPhase === 'DECIDING') {
-                log(`${player.name} passed.`);
+            else if(action.type === 'PASS') {
+                log("Passed.");
                 endTurn();
+            }
+            else if(action.type === 'OK') {
+                // Ack for Card Popup
+                if(gameState.activeCard) {
+                    gameState.activeCard = null;
+                    document.getElementById('host-card-overlay').style.display = 'none';
+                    endTurn();
+                }
             }
         }
 
@@ -473,32 +397,59 @@
                     if(player.money >= sq.price) {
                         gameState.turnPhase = 'DECIDING';
                         gameState.pendingSquareIdx = pos;
-                        broadcastState(); // Sends "DECIDING" state to client to show card
-                        return;
-                    } else {
-                        log("Can't afford.");
-                    }
+                        broadcastState();
+                    } else { log("Can't afford."); endTurn(); }
                 } else if(sq.owner !== player.id) {
-                    const owner = gameState.players[sq.owner];
-                    player.money -= sq.rent;
-                    owner.money += sq.rent;
-                    log(`Paid $${sq.rent} rent to ${owner.name}`);
-                }
-            } else if(sq.type === 'tax') {
-                player.money -= sq.cost;
-                log(`Paid Tax $${sq.cost}`);
-            } else if(sq.type === 'gotojail') {
+                    // Simple Rent (Base only for MVP)
+                    const rent = sq.rent[0]; 
+                    player.money -= rent;
+                    gameState.players[sq.owner].money += rent;
+                    log(`Paid $${rent} rent.`);
+                    endTurn();
+                } else { endTurn(); }
+            } 
+            else if(sq.type === 'chance' || sq.type === 'chest') {
+                drawCard(player, sq.type);
+            }
+            else if(sq.type === 'tax') { player.money -= sq.cost; endTurn(); }
+            else if(sq.type === 'gotojail') { player.position = 10; updateTokenPos(player); endTurn(); }
+            else { endTurn(); }
+        }
+
+        function drawCard(player, type) {
+            const deck = type === 'chance' ? chanceDeck : chestDeck;
+            const card = deck[Math.floor(Math.random() * deck.length)];
+            
+            gameState.turnPhase = 'ACKNOWLEDGING';
+            gameState.activeCard = { title: type.toUpperCase(), text: card.text, type: type };
+            
+            // Show on Host
+            const ov = document.getElementById('host-card-overlay');
+            const bc = document.getElementById('host-big-card');
+            document.getElementById('h-card-title').innerText = type.toUpperCase();
+            document.getElementById('h-card-text').innerText = card.text;
+            bc.className = `big-card card-${type}`;
+            ov.style.display = 'flex';
+
+            // Apply Effect
+            if(card.action === 'move') {
+                player.position = card.target;
+                updateTokenPos(player);
+                if(player.position === 0) player.money += 200;
+            } else if(card.action === 'money') {
+                player.money += card.amount;
+            } else if(card.action === 'gotojail') {
                 player.position = 10;
                 updateTokenPos(player);
-                log("Go to Jail!");
             }
 
-            endTurn();
+            broadcastState();
         }
 
         function endTurn() {
             gameState.turnPhase = 'ROLLING';
             gameState.pendingSquareIdx = null;
+            gameState.activeCard = null;
             gameState.turnIndex = (gameState.turnIndex + 1) % gameState.players.length;
             broadcastState();
         }
@@ -509,70 +460,16 @@
                 players: gameState.players,
                 turnIndex: gameState.turnIndex,
                 turnPhase: gameState.turnPhase,
-                pendingProp: gameState.pendingSquareIdx !== null ? boardMap[gameState.pendingSquareIdx] : null
+                pendingProp: gameState.pendingSquareIdx !== null ? boardMap[gameState.pendingSquareIdx] : null,
+                activeCard: gameState.activeCard
             };
             Object.values(connections).forEach(c => c.send(payload));
             renderPlayerList();
         }
 
-        // Host UI Helpers
-        function log(msg) {
-            const div = document.createElement('div');
-            div.innerText = msg;
-            const logEl = document.getElementById('game-log');
-            logEl.prepend(div);
-        }
-
-        function createToken(p) {
-            const t = document.createElement('div');
-            t.className = `token ${p.colorClass}`;
-            t.id = `token-${p.id}`;
-            const offset = (p.id * 3) - 4.5;
-            t.style.marginLeft = offset + '%';
-            t.style.marginTop = offset + '%';
-            document.getElementById('board-wrapper').appendChild(t);
-            updateTokenPos(p);
-        }
-
-        function updateTokenPos(p) {
-            const t = document.getElementById(`token-${p.id}`);
-            const sq = boardMap[p.position];
-            t.style.top = sq.top + '%';
-            t.style.left = sq.left + '%';
-        }
-
-        function addOwnerMarker(idx, colorClass) {
-            const sq = boardMap[idx];
-            const m = document.createElement('div');
-            m.className = `owner-marker ${colorClass}`;
-            m.style.top = sq.top + '%';
-            m.style.left = sq.left + '%';
-            document.getElementById('board-wrapper').appendChild(m);
-        }
-
-        function renderPlayerList() {
-            const container = document.getElementById('player-list');
-            container.innerHTML = '';
-            gameState.players.forEach((p, idx) => {
-                const isTurn = idx === gameState.turnIndex;
-                const div = document.createElement('div');
-                div.className = 'player-card';
-                div.style.border = isTurn ? '2px solid white' : 'none';
-                div.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <div class="p-avatar ${p.colorClass}"></div>
-                        <div>${p.name}</div>
-                    </div>
-                    <div class="p-money">$${p.money}</div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
         // --- CLIENT LOGIC ---
         function initPlayer() {
             const code = document.getElementById('join-code-input').value.toUpperCase();
-            if(code.length !== 4) return alert("Code?");
             peer = new Peer();
             peer.on('open', () => {
                 hostConn = peer.connect(APP_ID + code);
@@ -586,8 +483,7 @@
                 if(data.type === 'WELCOME') {
                     myId = data.player.id;
                     document.getElementById('c-name').innerText = data.player.name;
-                    // Tint header with player color
-                    document.getElementById('c-header').style.backgroundColor = getComputedStyle(document.body).getPropertyValue('--' + data.player.colorClass) || 'transparent';
+                    document.getElementById('c-header').style.backgroundColor = getComputedStyle(document.body).getPropertyValue('--' + data.player.colorClass);
                 }
                 if(data.type === 'STATE') updateClientUI(data);
             });
@@ -598,52 +494,98 @@
             if(me) document.getElementById('c-balance').innerText = '$' + me.money;
 
             const isMyTurn = state.turnIndex === myId;
-            const cardEl = document.getElementById('deed-card');
-            const msgEl = document.getElementById('msg-waiting');
-            const btnRoll = document.getElementById('btn-roll');
-            const btnBuy = document.getElementById('btn-buy');
-            const btnPass = document.getElementById('btn-pass');
+            const els = {
+                roll: document.getElementById('btn-roll'),
+                buy: document.getElementById('btn-buy'),
+                pass: document.getElementById('btn-pass'),
+                ok: document.getElementById('btn-ok'),
+                deed: document.getElementById('deed-card'),
+                popup: document.getElementById('popup-card'),
+                wait: document.getElementById('msg-waiting')
+            };
 
-            // Reset UI
-            btnRoll.style.display = 'none';
-            btnBuy.style.display = 'none';
-            btnPass.style.display = 'none';
-            cardEl.style.display = 'none';
-            msgEl.style.display = 'none';
+            // Hide All
+            Object.values(els).forEach(el => el.style.display = 'none');
 
             if(!isMyTurn) {
-                msgEl.style.display = 'block';
-                msgEl.innerText = `${state.players[state.turnIndex].name}'s Turn`;
+                els.wait.style.display = 'block';
+                els.wait.innerText = `${state.players[state.turnIndex].name}'s Turn`;
+                // Show card popup passively if one is active for another player
+                if(state.activeCard) showPopup(state.activeCard, false);
                 return;
             }
 
             if(state.turnPhase === 'ROLLING') {
-                btnRoll.style.display = 'block';
+                els.roll.style.display = 'block';
             } 
             else if(state.turnPhase === 'DECIDING') {
-                // Show Card
-                const prop = state.pendingProp;
-                if(prop) {
-                    cardEl.style.display = 'flex';
-                    const head = document.getElementById('deed-header');
-                    head.className = `deed-header ${prop.group}`;
-                    head.innerText = prop.name;
-                    document.getElementById('deed-rent').innerText = `$${prop.rent}`;
-                    document.getElementById('deed-cost').innerText = `$${prop.price}`;
-                    
-                    btnBuy.innerText = `BUY (-$${prop.price})`;
-                    btnBuy.style.display = 'block';
-                    btnPass.style.display = 'block';
-                }
+                renderDeed(state.pendingProp);
+                els.deed.style.display = 'flex';
+                els.buy.innerText = `BUY (-$${state.pendingProp.price})`;
+                els.buy.style.display = 'block';
+                els.pass.style.display = 'block';
             }
+            else if(state.turnPhase === 'ACKNOWLEDGING') {
+                showPopup(state.activeCard, true);
+            }
+        }
+
+        function showPopup(card, isMyTurn) {
+            const el = document.getElementById('popup-card');
+            el.className = `popup-card popup-${card.type}`;
+            document.getElementById('pop-title').innerText = card.title;
+            document.getElementById('pop-text').innerText = card.text;
+            el.style.display = 'block';
+            if(isMyTurn) document.getElementById('btn-ok').style.display = 'block';
+        }
+
+        function renderDeed(prop) {
+            const head = document.getElementById('deed-header');
+            head.className = `deed-header ${prop.group}`;
+            head.innerText = prop.name;
+
+            // Fill Rents
+            const rents = prop.rent || [0,0,0,0,0,0]; // Utilities/Railroads handled simply
+            document.getElementById('r-0').innerText = `$${rents[0]}`;
+            document.getElementById('r-1').innerText = `$${rents[1]}`;
+            document.getElementById('r-2').innerText = `$${rents[2]}`;
+            document.getElementById('r-3').innerText = `$${rents[3]}`;
+            document.getElementById('r-4').innerText = `$${rents[4]}`;
+            document.getElementById('r-h').innerText = `$${rents[5]}`;
+            
+            document.getElementById('m-val').innerText = `$${prop.mortgage || 0}`;
+            document.getElementById('h-cost').innerText = `$${prop.houseCost || 0}`;
+            document.getElementById('h-cost2').innerText = `$${prop.houseCost || 0}`;
+            document.getElementById('d-price').innerText = `$${prop.price}`;
         }
 
         function sendAction(type) {
             hostConn.send({ type: type });
-            // Optimistic Hide
             document.querySelectorAll('.btn-action').forEach(b => b.style.display = 'none');
         }
 
+        // --- HELPERS ---
+        function switchScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        function log(msg) { const d = document.createElement('div'); d.innerText = msg; document.getElementById('game-log').prepend(d); }
+        function renderPlayerList() {
+            const c = document.getElementById('player-list'); c.innerHTML = '';
+            gameState.players.forEach((p, i) => {
+                c.innerHTML += `<div class="player-card" style="border:${i===gameState.turnIndex?'2px solid white':'none'}"><div style="display:flex;gap:10px;"><div class="p-avatar ${p.colorClass}"></div><div>${p.name}</div></div><div class="p-money">$${p.money}</div></div>`;
+            });
+        }
+        function createToken(p) {
+            const t = document.createElement('div'); t.className=`token ${p.colorClass}`; t.id=`token-${p.id}`;
+            const off=(p.id*3)-4.5; t.style.marginLeft=off+'%'; t.style.marginTop=off+'%';
+            document.getElementById('board-wrapper').appendChild(t); updateTokenPos(p);
+        }
+        function updateTokenPos(p) {
+            const t = document.getElementById(`token-${p.id}`); const sq = boardMap[p.position];
+            t.style.top = sq.top + '%'; t.style.left = sq.left + '%';
+        }
+        function addOwnerMarker(idx, color) {
+            const sq=boardMap[idx]; const m=document.createElement('div'); m.className=`owner-marker ${color}`;
+            m.style.top=sq.top+'%'; m.style.left=sq.left+'%'; document.getElementById('board-wrapper').appendChild(m);
+        }
     </script>
 </body>
 </html>
