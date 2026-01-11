@@ -58,6 +58,7 @@
         .lobby-title { font-size: 1.8rem; margin-bottom: 20px; color: var(--accent); border-bottom: 1px solid #444; padding-bottom: 15px; }
         
         #lobby-code { font-size: 6rem; font-weight: 900; letter-spacing: 10px; color: white; text-align: center; margin: 20px 0; text-shadow: 0 0 20px var(--primary); }
+        #loading-msg { color: #f1c40f; margin-top: 10px; display:none; }
 
         .rule-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; }
         .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
@@ -70,7 +71,7 @@
         /* --- 3. HOST BOARD --- */
         #host-screen { flex-direction: row; position: relative; background: #111; }
         #board-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; position: relative; }
-        #board-wrapper { height: 95vh; width: 95vh; background-image: url('monopoly_board.png'); background-size: cover; border-radius: 4px; box-shadow: 0 0 80px rgba(0,0,0,0.9); position: relative; }
+        #board-wrapper { height: 95vh; width: 95vh; background-image: url('monopoly_board.png'); background-color: #CCE6C2; background-size: cover; border-radius: 4px; box-shadow: 0 0 80px rgba(0,0,0,0.9); position: relative; }
         #host-sidebar { width: var(--sidebar-width); background: #222; display: flex; flex-direction: column; padding: 25px; border-left: 2px solid #333; z-index: 20; }
         
         /* OVERLAYS */
@@ -126,6 +127,7 @@
         <h1>Monopoly</h1>
         <button class="btn btn-green" onclick="initHost()">HOST GAME</button>
         <button class="btn btn-blue" onclick="showJoinScreen()">JOIN GAME</button>
+        <div id="loading-msg">Connecting to server...</div>
     </div>
 
     <div id="join-setup-screen" class="screen">
@@ -227,6 +229,17 @@
     // --- CONFIGURATION ---
     const APP_ID = "poly-lob-v2-";
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    
+    // ** CRITICAL FIX: Public STUN servers to allow connection through firewalls/routers **
+    const PEER_CONFIG = {
+        debug: 2,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        }
+    };
 
     // --- ACCURATE CARDS ---
     const chanceCards = [
@@ -345,54 +358,122 @@
         switchScreen('client-screen');
         document.getElementById('c-name').innerText = nick;
 
-        peer = new Peer();
-        peer.on('open', () => {
-            hostConn = peer.connect(APP_ID + code, { metadata: { name: nick } });
+        // Clean up old peer if exists
+        if(peer) peer.destroy();
+
+        // 1. Initialize Client with config
+        peer = new Peer(null, PEER_CONFIG);
+        
+        peer.on('open', (id) => {
+            // 2. Connect to Host
+            hostConn = peer.connect(APP_ID + code, { 
+                metadata: { name: nick },
+                serialization: 'json' // FIX: Ensure reliable data format
+            });
+
+            hostConn.on('open', () => {
+                document.getElementById('c-status').innerText = "Connected! Waiting for host...";
+            });
+
             hostConn.on('data', handleClientData);
-            hostConn.on('error', err => { alert("Error: " + err); backToLanding(); });
-            setTimeout(() => { if(!hostConn.open) { /* alert("Connection Timed out"); backToLanding(); */ } }, 5000);
+            
+            hostConn.on('close', () => {
+                alert("Disconnected from Host");
+                location.reload();
+            });
+
+            hostConn.on('error', err => { 
+                console.error(err);
+                alert("Connection Error: " + err); 
+                backToLanding(); 
+            });
+        });
+
+        peer.on('error', (err) => {
+            alert("Network Error: " + err.type);
+            backToLanding();
         });
     }
 
     // --- HOST LOGIC ---
     function initHost() {
-        const code = generateCode();
-        switchScreen('lobby-screen');
-        document.getElementById('lobby-code').innerText = code;
+        document.getElementById('loading-msg').style.display = 'block';
+        tryRegisterHost();
+    }
+
+    function tryRegisterHost() {
+        if(peer) peer.destroy();
         
-        peer = new Peer(APP_ID + code);
+        const code = generateCode();
+        
+        // 1. Initialize Host with ID and Config
+        peer = new Peer(APP_ID + code, PEER_CONFIG);
+
+        peer.on('open', (id) => {
+            // Success - Show Lobby
+            document.getElementById('loading-msg').style.display = 'none';
+            switchScreen('lobby-screen');
+            document.getElementById('lobby-code').innerText = code;
+        });
+
         peer.on('connection', handleHostConn);
+
+        peer.on('error', (err) => {
+            console.log("Host Error", err);
+            // Retry if ID is taken
+            if(err.type === 'unavailable-id') {
+                console.log("Code taken, retrying...");
+                tryRegisterHost();
+            } else {
+                alert("Host Error: " + err.type);
+                document.getElementById('loading-msg').style.display = 'none';
+            }
+        });
     }
 
     function handleHostConn(conn) {
-        if(gameState.gameStarted) { conn.close(); return; }
+        if(gameState.gameStarted) { 
+            conn.close(); 
+            return; 
+        }
         
-        const pId = gameState.players.length;
-        if(pId >= 4) return; 
-
-        // Use Metadata Name or Fallback
-        const pName = (conn.metadata && conn.metadata.name) ? conn.metadata.name : "Player " + (pId+1);
-
-        const newPlayer = {
-            id: pId, 
-            name: pName,
-            colorClass: ["p-red","p-blue","p-green","p-yellow"][pId],
-            money: 1500,
-            position: 0,
-            jailed: false,
-            getOutCard: 0
-        };
-
-        gameState.players.push(newPlayer);
-        connections[pId] = conn;
-
-        renderLobbyList();
-
         conn.on('open', () => {
+            const pId = gameState.players.length;
+            if(pId >= 4) { conn.close(); return; } 
+
+            // Use Metadata Name or Fallback
+            const pName = (conn.metadata && conn.metadata.name) ? conn.metadata.name : "Player " + (pId+1);
+
+            const newPlayer = {
+                id: pId, 
+                name: pName,
+                colorClass: ["p-red","p-blue","p-green","p-yellow"][pId],
+                money: 1500,
+                position: 0,
+                jailed: false,
+                getOutCard: 0
+            };
+
+            gameState.players.push(newPlayer);
+            connections[pId] = conn;
+
+            renderLobbyList();
+            
             conn.send({ type: 'WELCOME', player: newPlayer });
             conn.send({ type: 'LOBBY_UPDATE', players: gameState.players, rules: gameState.rules });
         });
-        conn.on('data', data => handleHostAction(pId, data));
+
+        conn.on('data', data => handleHostAction(findPlayerIdByConn(conn), data));
+        conn.on('close', () => {
+            // Handle disconnect if needed
+        });
+    }
+
+    function findPlayerIdByConn(conn) {
+        for(let id in connections) {
+            if(connections[id] === conn) return parseInt(id);
+        }
+        return -1;
     }
 
     function renderLobbyList() {
@@ -406,8 +487,6 @@
         gameState.rules.pot = document.getElementById('rule-pot').checked;
         gameState.rules.goDouble = document.getElementById('rule-go').checked;
         gameState.rules.snake = document.getElementById('rule-snake').checked;
-        // In UI: "No Rent in Jail". Checked = No Rent (active). Unchecked = Rent (inactive).
-        // Logic: if checked, jailRent = false.
         gameState.rules.jailRent = !document.getElementById('rule-jail').checked;
 
         gameState.gameStarted = true;
@@ -422,7 +501,7 @@
     }
 
     function handleHostAction(pId, action) {
-        if(pId !== gameState.turnIndex) return;
+        if(pId === -1 || pId !== gameState.turnIndex) return;
         const p = gameState.players[pId];
 
         if(action.type === 'ROLL' && gameState.turnPhase === 'ROLLING') {
@@ -465,7 +544,6 @@
 
     function movePlayer(p, steps) {
         let landed = false;
-        let loops = 0;
         
         if(steps < 0) {
             p.position += steps;
@@ -628,32 +706,18 @@
         const s = document.createElement('div'); 
         s.className = `owner-strip ${color}`;
         
-        // Determine Rotation/Placement based on side
         let rot = 0;
         let t = sq.top; 
         let l = sq.left;
 
         if (idx > 0 && idx < 10) { 
-            // Bottom Row - strip at bottom of square? No, inner. Inner is Top.
-            // Let's standardise: Strip at the "Bottom" of the card visual, which rotates around board
-            rot = 0; // Strip is horizontal
-            t = 97; // Closer to edge
-            l = sq.left;
+            rot = 0; t = 97; l = sq.left;
         } else if (idx > 10 && idx < 20) {
-            // Left Row
-            rot = 90;
-            t = sq.top;
-            l = 3; // Closer to edge
+            rot = 90; t = sq.top; l = 3;
         } else if (idx > 20 && idx < 30) {
-            // Top Row
-            rot = 0;
-            t = 3;
-            l = sq.left;
+            rot = 0; t = 3; l = sq.left;
         } else if (idx > 30 && idx < 40) {
-            // Right Row
-            rot = 90;
-            t = sq.top;
-            l = 97;
+            rot = 90; t = sq.top; l = 97;
         }
 
         s.style.top = t + '%'; 
@@ -698,7 +762,9 @@
             activeCard: gameState.activeCard,
             pendingProp: gameState.pendingProp !== null ? boardMap[gameState.pendingProp] : null
         };
-        Object.values(connections).forEach(c => c.send(payload));
+        Object.values(connections).forEach(c => {
+             if(c.open) c.send(payload);
+        });
     }
 
     // --- CLIENT ---
