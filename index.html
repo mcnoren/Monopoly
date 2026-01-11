@@ -27,7 +27,6 @@
         .screen { display: none; width: 100%; height: 100%; }
         .active { display: flex; }
 
-        /* --- UI COMPONENTS --- */
         .btn { padding: 15px; font-size: 1.1rem; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: transform 0.1s; }
         .btn:active { transform: scale(0.98); }
         .btn-green { background: var(--primary); color: white; }
@@ -37,7 +36,6 @@
         .btn-orange { background: #e67e22; color: white; }
         .btn-text { background: transparent; color: #ccc; padding: 10px; font-size: 1rem; }
 
-        /* --- 1. LANDING --- */
         #landing-screen { flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #2c3e50 0%, #000 100%); }
         #landing-screen h1 { font-size: 4rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 5px; }
         .input-std { padding: 15px; font-size: 1.5rem; text-align: center; border-radius: 8px; border:none; width: 280px; margin: 5px 0; display: block;}
@@ -46,7 +44,6 @@
         #main-menu { display: flex; }
         #join-flow { display: none; flex-direction: column; align-items: center; gap: 10px; }
 
-        /* --- 2. LOBBY --- */
         #lobby-screen { flex-direction: column; align-items: center; padding: 40px; background: #222; }
         .lobby-container { display: flex; gap: 50px; width: 100%; max-width: 1000px; height: 100%; }
         .lobby-panel { flex: 1; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; display: flex; flex-direction: column; }
@@ -60,7 +57,6 @@
         input:checked + .slider { background-color: var(--primary); }
         input:checked + .slider:before { transform: translateX(24px); }
 
-        /* --- 3. HOST BOARD --- */
         #host-screen { flex-direction: row; position: relative; }
         #board-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #111; }
         #board-wrapper { height: 95vh; width: 95vh; background-image: url('monopoly_board.jpg'); background-size: cover; border-radius: 5px; box-shadow: 0 0 50px rgba(0,0,0,0.8); position: relative; }
@@ -84,12 +80,10 @@
         .bar-right { height: 8.1%; width: 0.6%; right: 0; left: auto; transform: translateY(-50%); }
         .pot-display { background: #27ae60; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
 
-        /* --- 4. CLIENT (PHONE) --- */
         #client-screen { flex-direction: column; background: #34495e; padding: 15px; position:relative; overflow: hidden; }
         .c-header { text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px; position:relative; }
         .c-balance { font-size: 2.5rem; color: #2ecc71; font-weight: bold; position: relative; display: inline-block; }
         
-        /* MONEY ANIMATION */
         .money-float { position: absolute; top: 0; left: 100%; font-size: 1.5rem; font-weight: bold; animation: floatUp 2s forwards; white-space: nowrap; pointer-events: none; }
         @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
 
@@ -117,7 +111,6 @@
         .swipe-container { flex-grow: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; align-items: center; padding: 0 20px; gap: 20px; }
         .swipe-item { scroll-snap-align: center; flex: 0 0 100%; display: flex; justify-content: center; pointer-events: auto; }
 
-        /* TRADE UI */
         #trade-ui { position: absolute; top:0; left:0; width:100%; height:100%; background:#2c3e50; z-index:400; display:none; flex-direction:column; padding:15px; }
         .trade-section { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px; display:flex; flex-direction:column; gap:5px; max-height: 35vh; overflow-y:auto; }
         .trade-header { font-size: 1.5rem; text-align: center; margin-bottom: 15px; border-bottom: 1px solid #555; padding-bottom: 5px; }
@@ -282,7 +275,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v13-"; 
+    const APP_ID = "poly-lob-v14-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
 
@@ -373,7 +366,7 @@
     let hostConn = null;
     let heartbeater = null;
     let clientPropState = [];
-    let clientTurnState = false; // Tracks if it is my turn locally
+    let clientTurnState = false;
 
     let gameState = {
         players: [], 
@@ -384,7 +377,7 @@
         pendingProp: null,
         activeCard: null,
         pendingCardAction: null,
-        activeTrade: null, // { from, to, offer: {money, props[]}, req: {money, props[]} }
+        activeTrade: null,
         gameStarted: false,
         movedByCard: false 
     };
@@ -411,9 +404,37 @@
         const pId = gameState.turnIndex;
         const p = gameState.players[pId];
         if (!p || !p.isAI) return;
+
+        // Trade response AI
+        if(gameState.activeTrade && gameState.activeTrade.to === pId) {
+            setTimeout(() => {
+                // AI Trade Evaluator: 
+                // Always accept if getting properties. 
+                // Always accept if money offered > money requested.
+                // Simple logic for now.
+                const offerValue = gameState.activeTrade.offer.money + (gameState.activeTrade.offer.props.length * 100);
+                const reqValue = gameState.activeTrade.req.money + (gameState.activeTrade.req.props.length * 100);
+                
+                if (offerValue >= reqValue) {
+                    handleHostAction(pId, {type: 'TRADE_ACCEPT'});
+                } else {
+                    handleHostAction(pId, {type: 'TRADE_DECLINE'});
+                }
+            }, 2000);
+            return;
+        }
+
+        if(gameState.activeTrade) return; // Wait for other trade to resolve
+
         setTimeout(() => {
             if (gameState.turnIndex !== pId) return;
-            if (gameState.turnPhase === 'ROLLING') {
+            
+            // AI Turn Logic
+            if (gameState.turnPhase === 'IDLE' && !gameState.activeTrade) {
+                // AI could initiate trade here. For now, just end turn.
+                handleHostAction(pId, {type: 'END_TURN'});
+            }
+            else if (gameState.turnPhase === 'ROLLING') {
                 if (p.jailed && p.money >= 600) handleHostAction(pId, {type: 'PAY_JAIL'});
                 else handleHostAction(pId, {type: 'ROLL'});
             }
@@ -423,7 +444,6 @@
                 else handleHostAction(pId, {type: 'PASS'});
             }
             else if (gameState.turnPhase === 'ACKNOWLEDGING') handleHostAction(pId, {type: 'OK'});
-            else if (gameState.turnPhase === 'IDLE') handleHostAction(pId, {type: 'END_TURN'});
         }, 1500); 
     }
 
@@ -516,18 +536,13 @@
 
     function handleHostAction(pId, action) {
         if(action.type === 'PING') return;
-        if(pId !== gameState.turnIndex && action.type !== 'TRADE_ACCEPT' && action.type !== 'TRADE_DECLINE') return;
+        if(pId !== gameState.turnIndex && action.type !== 'TRADE_ACCEPT' && action.type !== 'TRADE_DECLINE' && action.type !== 'TRADE_OFFER') return;
         const p = gameState.players[pId];
 
-        // --- TRADE LOGIC ---
         if(action.type === 'TRADE_OFFER') {
-            gameState.activeTrade = {
-                from: pId,
-                to: parseInt(action.target),
-                offer: action.offer, // {money, props[]}
-                req: action.req
-            };
+            gameState.activeTrade = { from: pId, to: parseInt(action.target), offer: action.offer, req: action.req };
             broadcastState();
+            processAITurn(); // Trigger AI check if AI is target
             return;
         }
         if(action.type === 'TRADE_DECLINE') {
@@ -542,11 +557,9 @@
             const pFrom = gameState.players[trade.from];
             const pTo = gameState.players[trade.to];
             
-            // Transfer Money
             pFrom.money = pFrom.money - trade.offer.money + trade.req.money;
             pTo.money = pTo.money - trade.req.money + trade.offer.money;
 
-            // Transfer Props (Simple ownership swap)
             trade.offer.props.forEach(idx => { boardMap[idx].owner = trade.to; });
             trade.req.props.forEach(idx => { boardMap[idx].owner = trade.from; });
 
@@ -591,8 +604,9 @@
                             p.jailed = false; p.jailTurns = 0;
                             movePlayerSequence(p, total);
                         } else {
-                            gameState.turnPhase = 'IDLE'; // Allow trade/done
+                            gameState.turnPhase = 'IDLE'; 
                             broadcastState();
+                            processAITurn();
                         }
                     }
                 } else {
@@ -610,11 +624,13 @@
             }
             gameState.turnPhase = 'IDLE';
             broadcastState();
+            processAITurn();
         }
         else if(action.type === 'PASS') {
             log("Passed property.");
             gameState.turnPhase = 'IDLE';
             broadcastState();
+            processAITurn();
         }
         else if(action.type === 'OK') {
             closeOverlay();
@@ -628,6 +644,7 @@
             } else {
                 gameState.turnPhase = 'IDLE';
                 broadcastState();
+                processAITurn();
             }
         }
         else if(action.type === 'END_TURN') {
@@ -652,7 +669,6 @@
         else if(card.action === 'back_3') { gameState.movedByCard = true; movePlayerSequence(p, -3); }
         else if(card.action === 'gotojail') { p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); done = true; }
         else if(card.action === 'nearest_util' || card.action === 'nearest_rr') {
-            let dist = 0; // Simplified calculation for brevity
             gameState.movedByCard = true; movePlayerSequence(p, 5); 
         }
         else if(card.action === 'pay_all') {
@@ -672,7 +688,7 @@
         }
         else if(card.action === 'keep_jail') { p.getOutCard++; done = true; }
         
-        if(done) { gameState.turnPhase = 'IDLE'; broadcastState(); }
+        if(done) { gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
     }
 
     function handleLanding(p) {
@@ -685,7 +701,7 @@
                     gameState.pendingProp = p.position;
                     broadcastState();
                     processAITurn();
-                } else { log("Can't afford property."); gameState.turnPhase = 'IDLE'; broadcastState(); }
+                } else { log("Can't afford property."); gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
             } else if (sq.owner !== p.id) {
                 if(gameState.players[sq.owner].jailed && !gameState.rules.jailRent) {
                     log("Owner is jailed. No rent.");
@@ -695,11 +711,11 @@
                     gameState.players[sq.owner].money += rent;
                     log(`Paid $${rent} rent.`);
                 }
-                gameState.turnPhase = 'IDLE'; broadcastState();
-            } else { gameState.turnPhase = 'IDLE'; broadcastState(); }
+                gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn();
+            } else { gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
         }
         else if(sq.type === 'chance' || sq.type === 'chest') { drawCard(p, sq.type); }
-        else if(sq.type === 'tax') { payTax(p, sq.cost); gameState.turnPhase = 'IDLE'; broadcastState(); }
+        else if(sq.type === 'tax') { payTax(p, sq.cost); gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
         else if(sq.type === 'parking') {
             if(gameState.rules.pot && gameState.potMoney > 0) {
                 p.money += gameState.potMoney;
@@ -707,12 +723,12 @@
                 gameState.potMoney = 0;
                 updatePot();
             }
-            gameState.turnPhase = 'IDLE'; broadcastState();
+            gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn();
         }
         else if(sq.type === 'gotojail') {
-            p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); gameState.turnPhase = 'IDLE'; broadcastState();
+            p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn();
         }
-        else { gameState.turnPhase = 'IDLE'; broadcastState(); }
+        else { gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
     }
 
     function payTax(p, amt) {
@@ -809,7 +825,7 @@
     function handleClientData(data) {
         if(data.type === 'PING') return;
         if(data.type === 'DICE_ANIM') {
-            if(clientTurnState) { // Only show if my turn
+            if(clientTurnState) {
                 const el = document.getElementById('dice-container-client');
                 el.innerHTML = data.html;
                 document.getElementById('client-dice-overlay').style.display = 'flex';
@@ -823,14 +839,13 @@
         else if(data.type === 'STATE') { 
             if(data.properties) clientPropState = data.properties;
             gameState.players = data.players;
-            gameState.activeTrade = data.activeTrade; // Sync trade
+            gameState.activeTrade = data.activeTrade; 
             updateClientUI(data); 
         }
     }
 
     function updateClientUI(state) {
         const me = state.players.find(p => p.id === myId);
-        // Money Animation
         if(me.money !== lastBalance) {
             const diff = me.money - lastBalance;
             const color = diff > 0 ? '#2ecc71' : '#e74c3c';
@@ -845,7 +860,7 @@
         }
         document.getElementById('c-balance').innerText = `$${me.money}`;
         const isMyTurn = state.turnIndex === myId;
-        clientTurnState = isMyTurn; // Store for Dice check
+        clientTurnState = isMyTurn; 
 
         const con = document.getElementById('c-controls');
         con.innerHTML = ''; 
@@ -855,16 +870,14 @@
         document.getElementById('inventory-grid').style.display = 'none';
         document.getElementById('incoming-trade-overlay').style.display = 'none';
 
-        // Check Active Trade
         if(state.activeTrade) {
             if(state.activeTrade.to === myId) {
-                // Incoming
                 document.getElementById('inc-trade-desc').innerText = `Request from Player ${state.activeTrade.from + 1}. Check details.`;
                 document.getElementById('incoming-trade-overlay').style.display = 'flex';
-                return; // Block UI
+                return;
             } else if(state.activeTrade.from === myId) {
                 document.getElementById('c-status').innerText = "Waiting for trade response...";
-                return; // Block UI
+                return;
             }
         }
 
@@ -919,11 +932,10 @@
     // --- TRADE SYSTEM ---
     function openTrade(targetId = null) {
         document.getElementById('trade-ui').style.display = 'flex';
-        // Populate Player List
         const list = document.getElementById('trade-player-list');
         list.innerHTML = '';
         gameState.players.forEach(p => {
-            if(p.id !== myId && !p.isAI) {
+            if(p.id !== myId) { // Allow trading with everyone except self
                 const b = document.createElement('button');
                 b.className = 'btn btn-blue';
                 b.style.width = '100%'; b.style.marginBottom = '5px';
@@ -942,8 +954,6 @@
         tradeTarget = tid;
         document.getElementById('trade-step-1').style.display = 'none';
         document.getElementById('trade-step-2').style.display = 'flex';
-        
-        // Populate Lists
         fillTradeList('trade-give-list', myId);
         fillTradeList('trade-get-list', tid);
     }
@@ -973,7 +983,7 @@
             offer: { money: giveMoney, props: giveProps },
             req: { money: getMoney, props: getProps }
         };
-        send(payload.type, payload); // Custom send helper usage
+        send(payload.type, payload);
         closeTrade();
     }
 
@@ -988,10 +998,9 @@
     }
 
     function counterTrade() {
-        // Just open trade UI pointing back to sender
         const sender = gameState.activeTrade.from;
-        respondTrade(false); // Decline original first
-        openTrade(sender); // Open builder
+        respondTrade(false); 
+        openTrade(sender); 
     }
 
     // --- INVENTORY ---
@@ -1011,7 +1020,7 @@
         myProps.forEach(p => { if(!groups[p.group]) groups[p.group] = []; groups[p.group].push(p); });
 
         // Sort order: Brown -> ... -> Blue -> Special
-        const order = ['bg-brown','bg-lightblue','bg-pink','bg-orange','bg-red','bg-yellow','bg-green','bg-darkblue','bg-gray','bg-black']; // Gray=Util, Black=RR
+        const order = ['bg-brown','bg-lightblue','bg-pink','bg-orange','bg-red','bg-yellow','bg-green','bg-darkblue','bg-gray','bg-black']; 
         const sortedKeys = Object.keys(groups).sort((a,b) => {
             let ia = order.indexOf(a), ib = order.indexOf(b);
             if(ia === -1) ia = 99; if(ib === -1) ib = 99;
