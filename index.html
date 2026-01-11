@@ -83,18 +83,23 @@
         
         /* OVERLAYS */
         .overlay-layer { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; display:none; flex-direction: column; align-items:center; justify-content:center; }
+        
+        /* Card Display */
         .card-display { width: 320px; height: 200px; background: white; border-radius: 12px; padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: center; color: black; animation: popIn 0.3s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .cd-chance { border: 12px solid #e67e22; } .cd-chest { border: 12px solid #3498db; }
         .cd-title { font-size: 2rem; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; }
         .cd-text { font-size: 1.2rem; }
 
+        /* DICE OVERLAY */
+        #dice-result-box { width: 300px; height: 150px; background: #fff; color: #000; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; border: 5px solid #2c3e50; animation: popIn 0.3s; }
+        .dice-val { font-size: 3rem; margin: 10px; }
+
         /* BOARD ELEMENTS */
-        .token { position: absolute; width: 3.5%; height: 3.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 20; box-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        /* Smooth transition for walking animation */
+        .token { position: absolute; width: 3.5%; height: 3.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: top 0.25s linear, left 0.25s linear; z-index: 20; box-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
-        /* OWNERSHIP BARS (EXPANDED TO EDGES) */
+        /* OWNERSHIP BARS */
         .owner-bar { position: absolute; z-index: 5; transition: all 0.3s; }
-        
-        /* Width 8.1% fills the space between lines. Height 0.6% keeps price visible. */
         .bar-bottom { height: 0.6%; width: 8.1%; bottom: 0; transform: translateX(-50%); }
         .bar-left   { height: 8.1%; width: 0.6%; left: 0; top: auto; transform: translateY(-50%); }
         .bar-top    { height: 0.6%; width: 8.1%; top: 0; bottom: auto; transform: translateX(-50%); }
@@ -133,12 +138,10 @@
 
     <div id="landing-screen" class="screen active">
         <h1>Monopoly</h1>
-        
         <div id="main-menu" class="menu-container">
             <button class="btn btn-green" onclick="initHost()" style="width: 250px;">HOST GAME</button>
             <button class="btn btn-blue" onclick="showJoin()" style="width: 250px;">JOIN GAME</button>
         </div>
-
         <div id="join-flow" class="menu-container">
             <input type="text" id="name-input" class="input-std" placeholder="NICKNAME" maxlength="12">
             <input type="text" id="code-input" class="input-std input-code" placeholder="ROOM CODE" maxlength="4">
@@ -185,6 +188,13 @@
     </div>
 
     <div id="host-screen" class="screen">
+        <div id="dice-overlay" class="overlay-layer">
+            <div id="dice-result-box">
+                <div>ROLLED</div>
+                <div id="dice-val-display" class="dice-val">0</div>
+            </div>
+        </div>
+
         <div id="overlay-card" class="overlay-layer">
             <div id="overlay-card-content" class="card-display">
                 <div id="ov-title" class="cd-title">CHANCE</div>
@@ -204,6 +214,13 @@
     </div>
 
     <div id="client-screen" class="screen">
+        <div id="client-dice-overlay" class="overlay-layer" style="z-index: 200; display:none;">
+            <div id="c-dice-box" class="card-display">
+                <div style="font-size:1.5rem; font-weight:bold;">ROLLED</div>
+                <div id="c-dice-val" style="font-size:4rem; font-weight:900; margin:20px 0;">7</div>
+            </div>
+        </div>
+
         <div id="client-overlay-card" class="overlay-layer" style="z-index: 200;">
             <div id="c-ov-content" class="card-display">
                 <div id="c-ov-title" class="cd-title">CHANCE</div>
@@ -243,7 +260,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v6-"; 
+    const APP_ID = "poly-lob-v7-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     
     const PEER_CONFIG = {
@@ -293,12 +310,6 @@
         { text: "You have won second prize in a beauty contest. Collect $10", action: "money", amount: 10 }
     ];
 
-    // --- REFINED BOARD DATA (Centers Corrected for Image) ---
-    // [Corner, Prop1, Prop2, Prop3, Prop4, Prop5, Prop6, Prop7, Prop8, Prop9, Corner]
-    // 93.5 = Start Corner
-    // 82.2 = Slightly right from mathematical center to fix alignment
-    // 41.5 = Slightly left from center to fix Oriental
-    // 25.8 = Slightly right from center to fix Vermont
     const POS = [93.5, 82.2, 74.5, 66.4, 58.2, 50.0, 41.5, 33.6, 25.8, 17.1, 6.5];
     
     const boardMap = [
@@ -379,7 +390,6 @@
         heartbeater = setInterval(() => { if(conn && conn.open) conn.send({type: 'PING'}); }, 2000); 
     }
 
-    // --- UI LOGIC ---
     function showJoin() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('join-flow').style.display = 'flex'; }
     function hideJoin() { document.getElementById('join-flow').style.display = 'none'; document.getElementById('main-menu').style.display = 'flex'; }
 
@@ -437,6 +447,50 @@
         broadcastState("Game Started!");
     }
 
+    // --- DICE & ANIMATION LOGIC ---
+    function showDiceResult(d1, d2) {
+        const total = d1 + d2;
+        const txt = `${d1} + ${d2} = ${total}`;
+        
+        // Host UI
+        const hostOv = document.getElementById('dice-overlay');
+        document.getElementById('dice-val-display').innerText = txt;
+        hostOv.style.display = 'flex';
+        
+        // Broadcast for Clients
+        Object.values(connections).forEach(c => c.send({type: 'DICE_ANIM', text: txt}));
+
+        // Hide after 2s
+        setTimeout(() => {
+            hostOv.style.display = 'none';
+            Object.values(connections).forEach(c => c.send({type: 'HIDE_DICE'}));
+        }, 2000);
+    }
+
+    async function movePlayerSequence(p, steps) {
+        const direction = steps > 0 ? 1 : -1;
+        const count = Math.abs(steps);
+
+        for(let i=0; i<count; i++) {
+            p.position = (p.position + direction + 40) % 40;
+            
+            // Pass GO logic during move
+            if(direction === 1 && p.position === 0) {
+                const sal = gameState.rules.goDouble ? 400 : 200;
+                p.money += sal;
+                log(`Passed GO. Collect $${sal}`);
+            }
+
+            updateToken(p);
+            broadcastState(); // Update clients at every step
+            
+            // Wait for step animation
+            await new Promise(r => setTimeout(r, 250));
+        }
+        
+        handleLanding(p);
+    }
+
     function handleHostAction(pId, action) {
         if(action.type === 'PING') return;
         if(pId !== gameState.turnIndex) return;
@@ -459,34 +513,40 @@
             const d1 = Math.ceil(Math.random()*6);
             const d2 = Math.ceil(Math.random()*6);
             const total = d1+d2;
-            log(`${p.name} rolled ${d1} + ${d2} = ${total}`);
+            log(`${p.name} rolled ${total}`);
 
-            if(d1===1 && d2===1 && gameState.rules.snake) {
-                p.money += 500;
-                log("Snake Eyes! +$500 Bonus");
-            }
+            // 1. Show Dice
+            showDiceResult(d1, d2);
 
-            if(p.jailed) {
-                if(d1===d2) { 
-                    p.jailed = false; p.jailTurns = 0; 
-                    log("Doubles! Released from Jail."); 
-                    movePlayer(p, total); 
-                } else {
-                    p.jailTurns++;
-                    log(`Failed roll. Jail turn ${p.jailTurns}/3.`);
-                    if(p.jailTurns >= 3) {
-                        log("3rd Fail. Paying $50 to leave.");
-                        p.money -= 50;
-                        if(gameState.rules.pot) { gameState.potMoney += 50; updatePot(); }
-                        p.jailed = false; p.jailTurns = 0;
-                        movePlayer(p, total);
-                    } else {
-                        endTurn();
-                    }
+            // 2. Wait, then Move
+            setTimeout(() => {
+                if(d1===1 && d2===1 && gameState.rules.snake) {
+                    p.money += 500;
+                    log("Snake Eyes! +$500 Bonus");
                 }
-            } else {
-                movePlayer(p, total);
-            }
+
+                if(p.jailed) {
+                    if(d1===d2) { 
+                        p.jailed = false; p.jailTurns = 0; 
+                        log("Doubles! Released."); 
+                        movePlayerSequence(p, total); 
+                    } else {
+                        p.jailTurns++;
+                        log(`Failed roll. Jail turn ${p.jailTurns}/3.`);
+                        if(p.jailTurns >= 3) {
+                            log("3rd Fail. Paying $50.");
+                            p.money -= 50;
+                            if(gameState.rules.pot) { gameState.potMoney += 50; updatePot(); }
+                            p.jailed = false; p.jailTurns = 0;
+                            movePlayerSequence(p, total);
+                        } else {
+                            endTurn();
+                        }
+                    }
+                } else {
+                    movePlayerSequence(p, total);
+                }
+            }, 2000);
         }
         else if(action.type === 'BUY') {
             const sq = boardMap[gameState.pendingProp];
@@ -511,23 +571,6 @@
                 endTurn();
             }
         }
-    }
-
-    function movePlayer(p, steps) {
-        if(steps < 0) {
-            p.position += steps;
-            if(p.position < 0) p.position += 40;
-        } else {
-            p.position += steps;
-            if(p.position >= 40) {
-                p.position -= 40;
-                const sal = gameState.rules.goDouble ? 400 : 200;
-                p.money += sal;
-                log(`Passed GO. Collect $${sal}`);
-            }
-        }
-        updateToken(p);
-        setTimeout(() => handleLanding(p), 800);
     }
 
     function handleLanding(p) {
@@ -599,47 +642,43 @@
         
         showOverlay(card.text, type);
 
-        // Actions
         if(card.action === 'move') {
-            let current = p.position;
-            let target = card.target;
-            if(target < current) {
-                const sal = gameState.rules.goDouble ? 400 : 200;
-                p.money += sal;
-            }
-            p.position = target;
-            updateToken(p);
-            gameState.movedByCard = true; // MARK FLAG
+            // Calculate steps to target
+            let dist = card.target - p.position;
+            if(dist < 0) dist += 40;
+            
+            gameState.movedByCard = true;
+            // Use animation sequence for card moves too
+            movePlayerSequence(p, dist); 
         } 
         else if(card.action === 'money') { p.money += card.amount; }
         else if(card.action === 'back_3') { 
-            p.position -= 3; updateToken(p); 
             gameState.movedByCard = true;
+            movePlayerSequence(p, -3);
         }
         else if(card.action === 'gotojail') { 
             p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); 
         }
         else if(card.action === 'nearest_util') {
-            let pos = p.position;
-            let target = 12;
-            if (pos >= 12 && pos < 28) target = 28;
-            if (pos >= 28) target = 12; 
-            if(target < pos) p.money += 200; 
-            p.position = target;
-            updateToken(p);
+            // Find distance
+            let dist = 0;
+            if (p.position < 12) dist = 12 - p.position;
+            else if (p.position < 28) dist = 28 - p.position;
+            else dist = (12 + 40) - p.position;
+            
             gameState.movedByCard = true;
+            movePlayerSequence(p, dist);
         }
         else if(card.action === 'nearest_rr') {
-            let pos = p.position;
-            let target = 5;
-            if (pos >= 5) target = 15;
-            if (pos >= 15) target = 25;
-            if (pos >= 25) target = 35;
-            if (pos >= 35) target = 5;
-            if(target < pos) p.money += 200;
-            p.position = target;
-            updateToken(p);
+            let dist = 0;
+            if (p.position < 5) dist = 5 - p.position;
+            else if (p.position < 15) dist = 15 - p.position;
+            else if (p.position < 25) dist = 25 - p.position;
+            else if (p.position < 35) dist = 35 - p.position;
+            else dist = (5 + 40) - p.position;
+
             gameState.movedByCard = true;
+            movePlayerSequence(p, dist);
         }
         else if(card.action === 'pay_all') {
             gameState.players.forEach(pl => {
@@ -681,7 +720,6 @@
         broadcastState();
     }
 
-    // --- HOST UI ---
     function createToken(p) {
         const d = document.createElement('div'); d.className=`token ${p.colorClass}`; d.id=`tok-${p.id}`;
         document.getElementById('board-wrapper').appendChild(d);
@@ -690,6 +728,7 @@
     function updateToken(p) {
         const sq = boardMap[p.position];
         const el = document.getElementById(`tok-${p.id}`);
+        // Offset random slightly so tokens don't perfectly overlap
         const rX = (Math.random()*1.5)-0.75;
         const rY = (Math.random()*1.5)-0.75;
         el.style.top = (sq.top + rY) + '%'; 
@@ -761,6 +800,19 @@
 
     function handleClientData(data) {
         if(data.type === 'PING') return;
+        // Handle Dice Anim
+        if(data.type === 'DICE_ANIM') {
+            const el = document.getElementById('c-dice-val');
+            const box = document.getElementById('client-dice-overlay');
+            el.innerText = data.text;
+            box.style.display = 'flex';
+            return;
+        }
+        if(data.type === 'HIDE_DICE') {
+            document.getElementById('client-dice-overlay').style.display = 'none';
+            return;
+        }
+
         if(data.type === 'WELCOME') { switchScreen('client-screen'); myId = data.player.id; document.getElementById('c-name').innerText = data.player.name; }
         else if(data.type === 'ERROR') { showError(data.msg); document.getElementById('btn-connect').innerText = "CONNECT"; }
         else if(data.type === 'LOBBY_UPDATE') { document.getElementById('c-status').innerText = "Host is configuring rules..."; }
