@@ -47,7 +47,6 @@
         .input-code { text-transform: uppercase; letter-spacing: 4px; font-weight: bold; }
         
         .menu-container { display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%; }
-        /* Initial state: Main menu visible, Join flow hidden */
         #main-menu { display: flex; }
         #join-flow { display: none; flex-direction: column; align-items: center; gap: 10px; }
 
@@ -92,13 +91,14 @@
         /* BOARD ELEMENTS */
         .token { position: absolute; width: 3.5%; height: 3.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 20; box-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
-        /* OWNERSHIP BARS */
+        /* OWNERSHIP BARS (EXPANDED TO EDGES) */
         .owner-bar { position: absolute; z-index: 5; transition: all 0.3s; }
-        /* Adjusted to 7.0% width to stay inside black lines, 0.6% height for visibility */
-        .bar-bottom { height: 0.6%; width: 7.0%; bottom: 0; transform: translateX(-50%); }
-        .bar-left   { height: 7.0%; width: 0.6%; left: 0; top: auto; transform: translateY(-50%); }
-        .bar-top    { height: 0.6%; width: 7.0%; top: 0; bottom: auto; transform: translateX(-50%); }
-        .bar-right  { height: 7.0%; width: 0.6%; right: 0; left: auto; transform: translateY(-50%); }
+        
+        /* Width 8.1% fills the space between lines. Height 0.6% keeps price visible. */
+        .bar-bottom { height: 0.6%; width: 8.1%; bottom: 0; transform: translateX(-50%); }
+        .bar-left   { height: 8.1%; width: 0.6%; left: 0; top: auto; transform: translateY(-50%); }
+        .bar-top    { height: 0.6%; width: 8.1%; top: 0; bottom: auto; transform: translateX(-50%); }
+        .bar-right  { height: 8.1%; width: 0.6%; right: 0; left: auto; transform: translateY(-50%); }
 
         .pot-display { background: #27ae60; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
 
@@ -243,12 +243,9 @@
     </div>
 
 <script>
-    // --- CONFIGURATION ---
-    const APP_ID = "poly-lob-v5-"; // Versioned ID to prevent ghost lobbies
+    const APP_ID = "poly-lob-v6-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     
-    // --- PEER CONFIG ---
-    // Google STUN servers for reliable mobile connection
     const PEER_CONFIG = {
         debug: 1,
         config: {
@@ -259,7 +256,6 @@
         }
     };
 
-    // --- ACCURATE CARDS ---
     const chanceCards = [
         { text: "Advance to Go (Collect $200)", action: "move", target: 0 },
         { text: "Advance to Illinois Ave", action: "move", target: 24 },
@@ -297,9 +293,13 @@
         { text: "You have won second prize in a beauty contest. Collect $10", action: "money", amount: 10 }
     ];
 
-    // --- ADJUSTED BOARD COORDINATES ---
-    // Corrected to account for board image distortions and perfect bar alignment
-    const POS = [93.5, 82.2, 74.66, 66.44, 58.22, 50.00, 41.77, 33.55, 26.0, 17.11, 6.5];
+    // --- REFINED BOARD DATA (Centers Corrected for Image) ---
+    // [Corner, Prop1, Prop2, Prop3, Prop4, Prop5, Prop6, Prop7, Prop8, Prop9, Corner]
+    // 93.5 = Start Corner
+    // 82.2 = Slightly right from mathematical center to fix alignment
+    // 41.5 = Slightly left from center to fix Oriental
+    // 25.8 = Slightly right from center to fix Vermont
+    const POS = [93.5, 82.2, 74.5, 66.4, 58.2, 50.0, 41.5, 33.6, 25.8, 17.1, 6.5];
     
     const boardMap = [
         { name: "GO", type: "go", top: POS[0], left: POS[0], side: 'bottom' },
@@ -379,7 +379,7 @@
         heartbeater = setInterval(() => { if(conn && conn.open) conn.send({type: 'PING'}); }, 2000); 
     }
 
-    // --- UI LOGIC (Fixed: Missing functions restored) ---
+    // --- UI LOGIC ---
     function showJoin() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('join-flow').style.display = 'flex'; }
     function hideJoin() { document.getElementById('join-flow').style.display = 'none'; document.getElementById('main-menu').style.display = 'flex'; }
 
@@ -449,7 +449,6 @@
                 p.jailTurns = 0;
                 if(gameState.rules.pot) { gameState.potMoney += 50; updatePot(); }
                 log(`${p.name} paid $50 to leave jail.`);
-                // Allow them to roll now
                 gameState.turnPhase = 'ROLLING';
                 broadcastState();
             }
@@ -506,7 +505,6 @@
         else if(action.type === 'OK') {
             closeOverlay();
             if(gameState.movedByCard) {
-                // Trigger landing logic on the new space
                 gameState.movedByCard = false;
                 handleLanding(p);
             } else {
