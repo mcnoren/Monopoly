@@ -36,6 +36,7 @@
         .btn-green { background: var(--primary); color: white; }
         .btn-blue { background: #3498db; color: white; }
         .btn-red { background: #e74c3c; color: white; }
+        .btn-purple { background: #9b59b6; color: white; } /* AI Button Color */
         .btn-text { background: transparent; color: #ccc; padding: 10px; font-size: 1rem; }
         .btn-text:hover { color: white; text-decoration: underline; }
 
@@ -180,7 +181,10 @@
             <div class="lobby-panel">
                 <div class="lobby-title" style="font-size: 1.5rem;">Players Joined</div>
                 <div id="lobby-player-list"></div>
-                <div style="margin-top:auto; text-align: center; color: #888;">Waiting for players...</div>
+                <div style="margin-top:auto; text-align: center;">
+                    <button class="btn btn-purple" onclick="addAI()" style="width:100%; margin-bottom:10px;">ADD AI PLAYER</button>
+                    <div style="color: #888;">Waiting for players...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -259,7 +263,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v8-"; 
+    const APP_ID = "poly-lob-v9-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     
     const PEER_CONFIG = {
@@ -371,7 +375,7 @@
         turnPhase: 'ROLLING', 
         pendingProp: null,
         activeCard: null,
-        pendingCardAction: null, // NEW: Wait for OK
+        pendingCardAction: null,
         gameStarted: false,
         movedByCard: false 
     };
@@ -393,6 +397,53 @@
     function showJoin() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('join-flow').style.display = 'flex'; }
     function hideJoin() { document.getElementById('join-flow').style.display = 'none'; document.getElementById('main-menu').style.display = 'flex'; }
 
+    // --- AI LOGIC ---
+    function addAI() {
+        if (gameState.players.length >= 4) return;
+        const pId = gameState.players.length;
+        const newPlayer = {
+            id: pId,
+            name: `Bot ${pId + 1}`,
+            colorClass: ["p-red", "p-blue", "p-green", "p-yellow"][pId],
+            money: 1500, position: 0, jailed: false, jailTurns: 0, getOutCard: 0, isAI: true
+        };
+        gameState.players.push(newPlayer);
+        renderLobbyList();
+        broadcastState();
+    }
+
+    function processAITurn() {
+        const pId = gameState.turnIndex;
+        const p = gameState.players[pId];
+        if (!p || !p.isAI) return;
+
+        // "Thinking" time
+        setTimeout(() => {
+            if (gameState.turnIndex !== pId) return;
+
+            if (gameState.turnPhase === 'ROLLING') {
+                if (p.jailed && p.money >= 600) {
+                     handleHostAction(pId, {type: 'PAY_JAIL'});
+                } else {
+                     handleHostAction(pId, {type: 'ROLL'});
+                }
+            }
+            else if (gameState.turnPhase === 'DECIDING') {
+                const sq = boardMap[gameState.pendingProp];
+                // Always buy if affordable
+                if (p.money >= sq.price) {
+                    handleHostAction(pId, {type: 'BUY'});
+                } else {
+                    handleHostAction(pId, {type: 'PASS'});
+                }
+            }
+            else if (gameState.turnPhase === 'ACKNOWLEDGING') {
+                handleHostAction(pId, {type: 'OK'});
+            }
+        }, 1500); 
+    }
+
+    // --- HOST LOGIC ---
     function initHost() {
         if(typeof Peer === 'undefined') { showError("PeerJS failed to load. Check internet."); return; }
         const code = generateCode();
@@ -430,7 +481,7 @@
 
     function renderLobbyList() {
         const el = document.getElementById('lobby-player-list');
-        el.innerHTML = gameState.players.map(p => `<div style="padding:10px; background:rgba(255,255,255,0.1); margin-bottom:5px; border-left:5px solid ${getColorHex(p.colorClass)}">${p.name}</div>`).join('');
+        el.innerHTML = gameState.players.map(p => `<div style="padding:10px; background:rgba(255,255,255,0.1); margin-bottom:5px; border-left:5px solid ${getColorHex(p.colorClass)}">${p.name} ${p.isAI ? '(BOT)' : ''}</div>`).join('');
     }
     function getColorHex(cls) { if(cls==='p-red') return '#e74c3c'; if(cls==='p-blue') return '#3498db'; if(cls==='p-green') return '#2ecc71'; return '#f1c40f'; }
 
@@ -445,19 +496,11 @@
         gameState.players.forEach(p => createToken(p));
         renderGameList();
         broadcastState("Game Started!");
+        processAITurn(); // Check if Player 1 is AI
     }
 
-    // --- DICE GRAPHICS HELPER ---
     function renderDiceHTML(val) {
-        // Simple dot maps for 1-6
-        const map = {
-            1: [4],
-            2: [0,8],
-            3: [0,4,8],
-            4: [0,2,6,8],
-            5: [0,2,4,6,8],
-            6: [0,2,3,5,6,8]
-        };
+        const map = { 1: [4], 2: [0,8], 3: [0,4,8], 4: [0,2,6,8], 5: [0,2,4,6,8], 6: [0,2,3,5,6,8] };
         const dots = map[val] || [];
         let html = '<div class="die">';
         for(let i=0; i<9; i++) {
@@ -473,9 +516,7 @@
         const hostEl = document.getElementById('dice-container-host');
         hostEl.innerHTML = html;
         document.getElementById('dice-overlay').style.display = 'flex';
-        
         Object.values(connections).forEach(c => c.send({type: 'DICE_ANIM', html: html}));
-
         setTimeout(() => {
             document.getElementById('dice-overlay').style.display = 'none';
             Object.values(connections).forEach(c => c.send({type: 'HIDE_DICE'}));
@@ -485,7 +526,6 @@
     async function movePlayerSequence(p, steps) {
         const direction = steps > 0 ? 1 : -1;
         const count = Math.abs(steps);
-
         for(let i=0; i<count; i++) {
             p.position = (p.position + direction + 40) % 40;
             if(direction === 1 && p.position === 0) {
@@ -514,6 +554,7 @@
                 log(`${p.name} paid $50 to leave jail.`);
                 gameState.turnPhase = 'ROLLING';
                 broadcastState();
+                processAITurn();
             }
             return;
         }
@@ -523,7 +564,6 @@
             const d2 = Math.ceil(Math.random()*6);
             const total = d1+d2;
             log(`${p.name} rolled ${total}`);
-
             showDiceResult(d1, d2);
 
             setTimeout(() => {
@@ -531,11 +571,9 @@
                     p.money += 500;
                     log("Snake Eyes! +$500 Bonus");
                 }
-
                 if(p.jailed) {
                     if(d1===d2) { 
-                        p.jailed = false; p.jailTurns = 0; 
-                        log("Doubles! Released."); 
+                        p.jailed = false; p.jailTurns = 0; log("Doubles! Released."); 
                         movePlayerSequence(p, total); 
                     } else {
                         p.jailTurns++;
@@ -571,11 +609,9 @@
         }
         else if(action.type === 'OK') {
             closeOverlay();
-            
-            // Execute Pending Card Action if exists
             if(gameState.pendingCardAction) {
                 const card = gameState.pendingCardAction;
-                gameState.pendingCardAction = null; // Clear it
+                gameState.pendingCardAction = null;
                 executeCardAction(p, card);
             } else if(gameState.movedByCard) {
                 gameState.movedByCard = false;
@@ -593,26 +629,17 @@
             gameState.movedByCard = true;
             movePlayerSequence(p, dist); 
         } 
-        else if(card.action === 'money') { 
-            p.money += card.amount; 
-            endTurn();
-        }
-        else if(card.action === 'back_3') { 
-            gameState.movedByCard = true;
-            movePlayerSequence(p, -3);
-        }
+        else if(card.action === 'money') { p.money += card.amount; endTurn(); }
+        else if(card.action === 'back_3') { gameState.movedByCard = true; movePlayerSequence(p, -3); }
         else if(card.action === 'gotojail') { 
-            p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); 
-            log("Sent to Jail!");
-            endTurn();
+            p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); endTurn(); 
         }
         else if(card.action === 'nearest_util') {
             let dist = 0;
             if (p.position < 12) dist = 12 - p.position;
             else if (p.position < 28) dist = 28 - p.position;
             else dist = (12 + 40) - p.position;
-            gameState.movedByCard = true;
-            movePlayerSequence(p, dist);
+            gameState.movedByCard = true; movePlayerSequence(p, dist);
         }
         else if(card.action === 'nearest_rr') {
             let dist = 0;
@@ -621,59 +648,38 @@
             else if (p.position < 25) dist = 25 - p.position;
             else if (p.position < 35) dist = 35 - p.position;
             else dist = (5 + 40) - p.position;
-            gameState.movedByCard = true;
-            movePlayerSequence(p, dist);
+            gameState.movedByCard = true; movePlayerSequence(p, dist);
         }
         else if(card.action === 'pay_all') {
-            gameState.players.forEach(pl => {
-                if(pl.id !== p.id) {
-                    p.money -= card.amount;
-                    pl.money += card.amount;
-                }
-            });
+            gameState.players.forEach(pl => { if(pl.id !== p.id) { p.money -= card.amount; pl.money += card.amount; } });
             endTurn();
         }
         else if(card.action === 'collect_all') {
-            gameState.players.forEach(pl => {
-                if(pl.id !== p.id) {
-                    pl.money -= card.amount;
-                    p.money += card.amount;
-                }
-            });
+            gameState.players.forEach(pl => { if(pl.id !== p.id) { pl.money -= card.amount; p.money += card.amount; } });
             endTurn();
         }
         else if(card.action === 'repairs') {
             let cost = 0;
-            boardMap.forEach(sq => {
-                if(sq.owner === p.id) {
-                    if(sq.houses === 5) cost += card.hotel;
-                    else cost += (sq.houses * card.house);
-                }
-            });
+            boardMap.forEach(sq => { if(sq.owner === p.id) { cost += (sq.houses === 5) ? card.hotel : (sq.houses * card.house); } });
             p.money -= cost;
             if(gameState.rules.pot) { gameState.potMoney += cost; updatePot(); }
             endTurn();
         }
-        else if(card.action === 'keep_jail') { 
-            p.getOutCard++; 
-            endTurn();
-        }
-        else {
-            endTurn();
-        }
+        else if(card.action === 'keep_jail') { p.getOutCard++; endTurn(); }
+        else { endTurn(); }
         broadcastState();
     }
 
     function handleLanding(p) {
         const sq = boardMap[p.position];
         log(`Landed on ${sq.name}`);
-
         if(sq.type === 'prop') {
             if(sq.owner === null) {
                 if(p.money >= sq.price) {
                     gameState.turnPhase = 'DECIDING';
                     gameState.pendingProp = p.position;
                     broadcastState();
+                    processAITurn();
                 } else { log("Can't afford property."); endTurn(); }
             } else if (sq.owner !== p.id) {
                 if(gameState.players[sq.owner].jailed && !gameState.rules.jailRent) {
@@ -688,13 +694,8 @@
                 endTurn();
             } else { endTurn(); }
         }
-        else if(sq.type === 'chance' || sq.type === 'chest') {
-            drawCard(p, sq.type);
-        }
-        else if(sq.type === 'tax') {
-            payTax(p, sq.cost);
-            endTurn();
-        }
+        else if(sq.type === 'chance' || sq.type === 'chest') { drawCard(p, sq.type); }
+        else if(sq.type === 'tax') { payTax(p, sq.cost); endTurn(); }
         else if(sq.type === 'parking') {
             if(gameState.rules.pot && gameState.potMoney > 0) {
                 p.money += gameState.potMoney;
@@ -715,26 +716,19 @@
 
     function payTax(p, amt) {
         p.money -= amt;
-        if(gameState.rules.pot) {
-            gameState.potMoney += amt;
-            updatePot();
-            log(`Paid $${amt} tax to Pot.`);
-        } else {
-            log(`Paid $${amt} tax.`);
-        }
+        if(gameState.rules.pot) { gameState.potMoney += amt; updatePot(); log(`Paid $${amt} tax to Pot.`); } 
+        else { log(`Paid $${amt} tax.`); }
     }
 
     function drawCard(p, type) {
         const deck = type === 'chance' ? chanceCards : chestCards;
         const card = deck[Math.floor(Math.random()*deck.length)];
-        
-        // Show card, but do NOT execute yet
         gameState.turnPhase = 'ACKNOWLEDGING';
         gameState.activeCard = { title: type.toUpperCase(), text: card.text, type: type };
-        gameState.pendingCardAction = card; // Store for later
-        
+        gameState.pendingCardAction = card;
         showOverlay(card.text, type);
         broadcastState();
+        processAITurn();
     }
 
     function endTurn() {
@@ -743,6 +737,7 @@
         gameState.activeCard = null;
         gameState.turnIndex = (gameState.turnIndex + 1) % gameState.players.length;
         broadcastState();
+        processAITurn();
     }
 
     function createToken(p) {
