@@ -50,6 +50,7 @@
         /* --- 1b. JOIN SETUP --- */
         #join-setup-screen { flex-direction: column; align-items: center; justify-content: center; background: #2c3e50; }
         .back-btn { background: transparent; color: #aaa; border: 1px solid #aaa; margin-top: 20px; font-size: 1rem; padding: 10px 20px; }
+        #conn-status { color: #f1c40f; margin-top: 10px; height: 20px; font-weight: bold; }
 
         /* --- 2. LOBBY --- */
         #lobby-screen { flex-direction: column; align-items: center; padding: 30px; background: #222; }
@@ -73,31 +74,31 @@
         #board-wrapper { height: 95vh; width: 95vh; background-image: url('monopoly_board.png'); background-size: cover; border-radius: 4px; box-shadow: 0 0 80px rgba(0,0,0,0.9); position: relative; }
         #host-sidebar { width: var(--sidebar-width); background: #222; display: flex; flex-direction: column; padding: 25px; border-left: 2px solid #333; z-index: 20; }
         
-        /* OVERLAYS */
-        #overlay-card { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:100; display:none; flex-direction: column; align-items:center; justify-content:center; }
-        .card-display { width: 400px; min-height: 250px; background: white; border-radius: 15px; padding: 30px; text-align: center; display: flex; flex-direction: column; justify-content: center; color: black; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        /* OVERLAYS (Host & Client) */
+        .overlay-card { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:100; display:none; flex-direction: column; align-items:center; justify-content:center; }
+        .card-display { width: 90%; max-width: 400px; min-height: 250px; background: white; border-radius: 15px; padding: 30px; text-align: center; display: flex; flex-direction: column; justify-content: center; color: black; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .cd-chance { border: 15px solid #e67e22; } .cd-chest { border: 15px solid #3498db; }
         .cd-title { font-size: 2.5rem; font-weight: 900; margin-bottom: 20px; text-transform: uppercase; }
-        .cd-text { font-size: 1.5rem; line-height: 1.4; }
+        .cd-text { font-size: 1.5rem; line-height: 1.4; margin-bottom: 20px; }
 
         /* BOARD ELEMENTS */
         .token { position: absolute; width: 4.5%; height: 4.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: all 0.6s cubic-bezier(0.25, 0.1, 0.25, 1); z-index: 10; box-shadow: 4px 4px 8px rgba(0,0,0,0.8); }
         
-        /* THE OWNER STRIP */
+        /* THE OWNER STRIP - REWORKED */
         .owner-strip {
             position: absolute;
-            width: 5%; /* Relative to board size */
-            height: 1.2%; 
+            width: 5.5%; /* Width of the color bar area */
+            height: 1.5%; 
             transform: translate(-50%, -50%);
             z-index: 5;
-            box-shadow: 1px 1px 3px rgba(0,0,0,0.6);
-            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 0 4px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.6);
         }
 
         .pot-display { background: #27ae60; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.4rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
         /* --- 4. CLIENT (PHONE) --- */
-        #client-screen { flex-direction: column; background: #34495e; padding: 15px; }
+        #client-screen { flex-direction: column; background: #34495e; padding: 15px; position: relative; }
         .c-header { text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 15px; }
         .c-balance { font-size: 3rem; color: #2ecc71; font-weight: bold; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         
@@ -132,6 +133,7 @@
         <h2 style="margin-bottom: 20px;">ENTER GAME</h2>
         <input type="text" id="join-code" class="input-field input-code" placeholder="ROOM CODE" maxlength="4">
         <input type="text" id="join-name" class="input-field" placeholder="NICKNAME" maxlength="12">
+        <div id="conn-status"></div>
         <button class="btn btn-blue" onclick="connectToHost()">ENTER</button>
         <button class="btn back-btn" onclick="backToLanding()">BACK</button>
     </div>
@@ -174,10 +176,10 @@
     </div>
 
     <div id="host-screen" class="screen">
-        <div id="overlay-card">
-            <div id="overlay-card-content" class="card-display">
-                <div id="ov-title" class="cd-title">CHANCE</div>
-                <div id="ov-text" class="cd-text">Text</div>
+        <div id="host-overlay" class="overlay-card">
+            <div id="host-ov-content" class="card-display">
+                <div id="host-ov-title" class="cd-title">CHANCE</div>
+                <div id="host-ov-text" class="cd-text">Text</div>
             </div>
         </div>
 
@@ -194,6 +196,14 @@
     </div>
 
     <div id="client-screen" class="screen">
+        <div id="client-overlay" class="overlay-card" style="position:fixed; z-index:999;">
+            <div id="client-ov-content" class="card-display">
+                <div id="client-ov-title" class="cd-title">CHANCE</div>
+                <div id="client-ov-text" class="cd-text">Text</div>
+                <button class="btn-action btn-green" onclick="send('OK')">OK</button>
+            </div>
+        </div>
+
         <div class="c-header">
             <h2 id="c-name" style="margin:0; font-size:2rem;">Player</h2>
             <div id="c-balance" class="c-balance">$1500</div>
@@ -225,7 +235,7 @@
 
 <script>
     // --- CONFIGURATION ---
-    const APP_ID = "poly-lob-v2-";
+    const APP_ID = "poly-final-v1-";
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
     // --- ACCURATE CARDS ---
@@ -266,7 +276,7 @@
         { text: "You have won second prize in a beauty contest. Collect $10", action: "money", amount: 10 }
     ];
 
-    // --- BOARD DATA ---
+    // --- BOARD DATA (Percent Centers) ---
     const boardMap = [
         { name: "GO", type: "go", top: 93, left: 93 },
         { name: "Mediter. Ave", type: "prop", group: "bg-brown", price: 60, rent: [2,10,30,90,160,250], mortgage: 30, build: 50, owner: null, houses: 0, top: 93, left: 85.5 },
@@ -332,25 +342,49 @@
     function generateCode() { let r=""; for(let i=0;i<4;i++) r+=CODE_CHARS.charAt(Math.floor(Math.random()*CODE_CHARS.length)); return r; }
     function log(msg) { const d = document.createElement('div'); d.innerText = msg; document.getElementById('game-log').prepend(d); }
 
-    // --- CLIENT JOIN LOGIC ---
+    // --- CLIENT JOIN LOGIC (Updated for Connection Stability) ---
     function showJoinScreen() { switchScreen('join-setup-screen'); }
     function backToLanding() { switchScreen('landing-screen'); }
     
     function connectToHost() {
         const code = document.getElementById('join-code').value.toUpperCase();
         const nick = document.getElementById('join-name').value.trim();
+        const statusEl = document.getElementById('conn-status');
+        
         if(code.length !== 4) return alert("Code must be 4 characters");
         if(nick.length < 1) return alert("Enter a nickname");
         
-        switchScreen('client-screen');
-        document.getElementById('c-name').innerText = nick;
-
+        statusEl.innerText = "Connecting...";
+        
         peer = new Peer();
+        
+        peer.on('error', (err) => {
+            alert("Connection Error: " + err.type);
+            statusEl.innerText = "";
+        });
+
         peer.on('open', () => {
             hostConn = peer.connect(APP_ID + code, { metadata: { name: nick } });
+            
+            // Connection Timeout Safety
+            const timeout = setTimeout(() => {
+                if(!hostConn || !hostConn.open) {
+                    alert("Connection timed out. Check code or Host.");
+                    statusEl.innerText = "Failed";
+                }
+            }, 5000);
+
+            hostConn.on('open', () => {
+                clearTimeout(timeout);
+                switchScreen('client-screen');
+                document.getElementById('c-name').innerText = nick;
+            });
+
             hostConn.on('data', handleClientData);
-            hostConn.on('error', err => { alert("Error: " + err); backToLanding(); });
-            setTimeout(() => { if(!hostConn.open) { /* alert("Connection Timed out"); backToLanding(); */ } }, 5000);
+            hostConn.on('close', () => {
+                 alert("Host Disconnected"); 
+                 backToLanding(); 
+            });
         });
     }
 
@@ -406,8 +440,6 @@
         gameState.rules.pot = document.getElementById('rule-pot').checked;
         gameState.rules.goDouble = document.getElementById('rule-go').checked;
         gameState.rules.snake = document.getElementById('rule-snake').checked;
-        // In UI: "No Rent in Jail". Checked = No Rent (active). Unchecked = Rent (inactive).
-        // Logic: if checked, jailRent = false.
         gameState.rules.jailRent = !document.getElementById('rule-jail').checked;
 
         gameState.gameStarted = true;
@@ -417,7 +449,6 @@
 
         gameState.players.forEach(p => createToken(p));
         renderGameList();
-        
         broadcastState("Game Started!");
     }
 
@@ -622,43 +653,43 @@
         el.style.top = sq.top + '%'; el.style.left = sq.left + '%';
     }
     
-    // STRIP LOGIC
+    // --- UPDATED OWNER STRIP LOGIC ---
+    // Places the strip exactly on the inner colored bar based on index ranges
     function addOwnerStrip(idx, color) {
         const sq = boardMap[idx];
         const s = document.createElement('div'); 
         s.className = `owner-strip ${color}`;
         
-        // Determine Rotation/Placement based on side
-        let rot = 0;
         let t = sq.top; 
         let l = sq.left;
+        let w = "5.5%";
+        let h = "1.5%";
 
         if (idx > 0 && idx < 10) { 
-            // Bottom Row - strip at bottom of square? No, inner. Inner is Top.
-            // Let's standardise: Strip at the "Bottom" of the card visual, which rotates around board
-            rot = 0; // Strip is horizontal
-            t = 97; // Closer to edge
+            // Bottom Row: Bar is at the TOP of the square (towards board center)
+            // Square center is ~93%. Top of square is ~89%.
+            t = sq.top - 6; 
             l = sq.left;
         } else if (idx > 10 && idx < 20) {
-            // Left Row
-            rot = 90;
+            // Left Row: Bar is at the RIGHT of the square (towards board center)
             t = sq.top;
-            l = 3; // Closer to edge
+            l = sq.left + 6;
+            w = "1.5%"; h = "5.5%"; // Rotate dimensions
         } else if (idx > 20 && idx < 30) {
-            // Top Row
-            rot = 0;
-            t = 3;
+            // Top Row: Bar is at the BOTTOM of the square (towards board center)
+            t = sq.top + 6;
             l = sq.left;
         } else if (idx > 30 && idx < 40) {
-            // Right Row
-            rot = 90;
+            // Right Row: Bar is at the LEFT of the square (towards board center)
             t = sq.top;
-            l = 97;
+            l = sq.left - 6;
+            w = "1.5%"; h = "5.5%";
         }
 
         s.style.top = t + '%'; 
         s.style.left = l + '%';
-        s.style.transform = `translate(-50%, -50%) rotate(${rot}deg)`;
+        s.style.width = w;
+        s.style.height = h;
         
         document.getElementById('board-wrapper').appendChild(s);
     }
@@ -678,14 +709,18 @@
     }
 
     function showOverlay(text, type) {
-        const ov = document.getElementById('overlay-card');
-        const cont = document.getElementById('overlay-card-content');
-        document.getElementById('ov-title').innerText = type.toUpperCase();
-        document.getElementById('ov-text').innerText = text;
+        // Show Host Overlay
+        const ov = document.getElementById('host-overlay');
+        const cont = document.getElementById('host-ov-content');
+        document.getElementById('host-ov-title').innerText = type.toUpperCase();
+        document.getElementById('host-ov-text').innerText = text;
         cont.className = `card-display cd-${type}`;
         ov.style.display = 'flex';
     }
-    function closeOverlay() { document.getElementById('overlay-card').style.display = 'none'; }
+    
+    function closeOverlay() { 
+        document.getElementById('host-overlay').style.display = 'none'; 
+    }
 
     function broadcastState(msg) {
         if(msg) log(msg);
@@ -704,8 +739,7 @@
     // --- CLIENT ---
     function handleClientData(data) {
         if(data.type === 'WELCOME') {
-            switchScreen('client-screen');
-            myId = data.player.id;
+            // Already handled in connect logic, but safe to keep
         }
         else if(data.type === 'LOBBY_UPDATE') {
             document.getElementById('c-status').innerText = "Host is configuring rules...";
@@ -722,6 +756,23 @@
         const con = document.getElementById('c-controls');
         con.innerHTML = ''; 
         document.getElementById('deed-card').style.display = 'none';
+        
+        // Handle Client Overlay for Cards
+        const clientOv = document.getElementById('client-overlay');
+        if(state.turnPhase === 'ACKNOWLEDGING') {
+            const card = state.activeCard;
+            document.getElementById('client-ov-title').innerText = card.title;
+            document.getElementById('client-ov-text').innerText = card.text;
+            document.getElementById('client-ov-content').className = `card-display cd-${card.type}`;
+            clientOv.style.display = 'flex';
+            
+            // Only current player can dismiss
+            const btn = document.querySelector('#client-ov-content button');
+            btn.style.display = isMyTurn ? 'block' : 'none';
+            
+        } else {
+            clientOv.style.display = 'none';
+        }
 
         if(!isMyTurn) {
             document.getElementById('c-status').innerText = `${state.players[state.turnIndex].name}'s Turn`;
@@ -741,10 +792,6 @@
                 <button class="btn-action btn-green" onclick="send('BUY')">BUY for $${p.price}</button>
                 <button class="btn-action btn-blue" onclick="send('PASS')">PASS</button>
             `;
-        }
-        else if(state.turnPhase === 'ACKNOWLEDGING') {
-            con.innerHTML = `<div style="background:${state.activeCard.type==='chance'?'#e67e22':'#3498db'}; padding:20px; border-radius:10px; margin-bottom:15px; text-align:center; font-weight:bold; font-size:1.2rem; color:white;">${state.activeCard.text}</div>
-            <button class="btn-action btn-green" onclick="send('OK')">OK</button>`;
         }
     }
 
