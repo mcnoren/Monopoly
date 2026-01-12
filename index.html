@@ -11,6 +11,8 @@
             --primary: #27ae60;
             --accent: #f1c40f;
             --sidebar-width: 320px;
+            --brown: #8b4513; --lightblue: #87ceeb; --pink: #ff69b4; --orange: #ffa500;
+            --red: #ff0000; --yellow: #ffff00; --green: #008000; --darkblue: #00008b;
         }
 
         * { box-sizing: border-box; }
@@ -127,6 +129,9 @@
         .trade-group-header { padding:5px; font-size:0.8rem; font-weight:bold; color:white; text-transform:uppercase; margin-top:5px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;}
         .trade-group-header span { font-size:0.7rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; }
         .trade-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; margin-left:5px; }
+        
+        /* Colored Property Names in Trade List */
+        .trade-prop-name { flex-grow:1; font-weight:bold; padding:2px 5px; border-radius:3px; color:black; text-shadow:none; margin-right:10px; }
         .trade-check { transform: scale(1.3); }
 
         .tr-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(46, 204, 113, 0.95); z-index:700; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; animation:popIn 0.3s; }
@@ -137,10 +142,18 @@
         #error-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; z-index: 1000; font-weight: bold; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
         .p-red { background: #e74c3c; } .p-blue { background: #3498db; } .p-green { background: #2ecc71; } .p-yellow { background: #f1c40f; }
-        .bg-brown { background: #8b4513; color: white; } .bg-lightblue { background: #87ceeb; color: black; } .bg-pink { background: #ff69b4; color: black; }
-        .bg-orange { background: #ffa500; color: black; } .bg-red { background: #ff0000; color: white; } .bg-yellow { background: #ffff00; color: black; }
-        .bg-green { background: #008000; color: white; } .bg-darkblue { background: #00008b; color: white; }
-        .bg-black { background: #000; color: white; } .bg-gray { background: #95a5a6; color: black; }
+        
+        /* Board Colors */
+        .bg-brown { background: var(--brown); color: white; } 
+        .bg-lightblue { background: var(--lightblue); color: black; } 
+        .bg-pink { background: var(--pink); color: black; }
+        .bg-orange { background: var(--orange); color: black; } 
+        .bg-red { background: var(--red); color: white; } 
+        .bg-yellow { background: var(--yellow); color: black; }
+        .bg-green { background: var(--green); color: white; } 
+        .bg-darkblue { background: var(--darkblue); color: white; }
+        .bg-black { background: black; color: white; } 
+        .bg-gray { background: #95a5a6; color: black; }
 
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
@@ -225,9 +238,9 @@
         <div id="trade-ui">
             <div class="trade-header">TRADE WITH...</div>
             <div id="trade-player-tabs"></div>
-            <div style="display:flex; gap:10px;">
-                <div style="flex:1; text-align:center; font-weight:bold; font-size:0.8rem;">YOU GIVE</div>
-                <div style="flex:1; text-align:center; font-weight:bold; font-size:0.8rem;">YOU GET</div>
+            <div style="display:flex; gap:10px; margin-bottom:5px;">
+                <div style="flex:1; text-align:center; font-weight:bold; font-size:0.8rem;">YOU GIVE <span id="trade-my-money-disp" style="color:#2ecc71; display:block;"></span></div>
+                <div style="flex:1; text-align:center; font-weight:bold; font-size:0.8rem;">YOU GET <span id="trade-their-money-disp" style="color:#2ecc71; display:block;"></span></div>
             </div>
             <div style="display:flex; gap:10px; flex-grow:1;">
                 <div class="trade-section" id="trade-give-list"></div>
@@ -304,7 +317,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v20-"; 
+    const APP_ID = "poly-lob-v21-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
 
@@ -402,7 +415,7 @@
         rules: { pot: false, goDouble: false, snake: false, jailRent: true },
         potMoney: 0,
         turnIndex: 0,
-        turnPhase: 'ROLLING', 
+        turnPhase: 'LOBBY', 
         pendingProp: null,
         activeCard: null,
         pendingCardAction: null,
@@ -420,6 +433,7 @@
     function showJoin() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('join-flow').style.display = 'flex'; }
     function hideJoin() { document.getElementById('join-flow').style.display = 'none'; document.getElementById('main-menu').style.display = 'flex'; }
 
+    // --- AI LOGIC ---
     function addAI() {
         if (gameState.players.length >= 4) return;
         const pId = gameState.players.length;
@@ -433,30 +447,35 @@
         const pId = gameState.turnIndex;
         const p = gameState.players[pId];
         if (!p || !p.isAI) return;
+
+        // Trade response AI
+        if(gameState.activeTrade && gameState.activeTrade.to === pId) {
+            setTimeout(() => {
+                handleHostAction(pId, {type: 'TRADE_ACCEPT'}); // Simple Accept all for now
+            }, 2000);
+            return;
+        }
+
         if(gameState.activeTrade || gameState.turnPhase === 'TRADE_SHOWCASE') return; 
+
         setTimeout(() => {
             if (gameState.turnIndex !== pId) return;
+            
             if (gameState.turnPhase === 'ROLLING') {
                 if (p.jailed && p.money >= 600) handleHostAction(pId, {type: 'PAY_JAIL'});
                 else handleHostAction(pId, {type: 'ROLL'});
-            } else if (gameState.turnPhase === 'DECIDING') {
+            }
+            else if (gameState.turnPhase === 'DECIDING') {
                 const sq = boardMap[gameState.pendingProp];
                 if (p.money >= sq.price) handleHostAction(pId, {type: 'BUY'});
                 else handleHostAction(pId, {type: 'PASS'});
-            } else if (gameState.turnPhase === 'ACKNOWLEDGING') handleHostAction(pId, {type: 'OK'});
+            }
+            else if (gameState.turnPhase === 'ACKNOWLEDGING') handleHostAction(pId, {type: 'OK'});
             else if (gameState.turnPhase === 'IDLE') handleHostAction(pId, {type: 'END_TURN'});
         }, 1500);
     }
 
-    function processAITradeResponse(targetId) {
-        const p = gameState.players[targetId];
-        if(!p || !p.isAI) return;
-        setTimeout(() => {
-            const trade = gameState.activeTrade;
-            if (trade && trade.to === targetId) handleHostAction(targetId, {type: 'TRADE_ACCEPT'});
-        }, 2000); 
-    }
-
+    // --- HOST LOGIC ---
     function initHost() {
         if(typeof Peer === 'undefined') { showError("PeerJS failed to load. Check internet."); return; }
         const code = generateCode();
@@ -497,6 +516,7 @@
         gameState.rules.snake = document.getElementById('rule-snake').checked;
         gameState.rules.jailRent = !document.getElementById('rule-jail').checked; 
         gameState.gameStarted = true;
+        gameState.turnPhase = 'ROLLING'; // START!
         switchScreen('host-screen');
         if(gameState.rules.pot) document.getElementById('pot-display').style.display = 'block';
         gameState.players.forEach(p => createToken(p));
@@ -562,13 +582,18 @@
 
     function handleHostAction(pId, action) {
         if(action.type === 'PING') return;
+        // Strict Turn Check for Game Actions (except join/trade)
+        if(!gameState.gameStarted && action.type !== 'JOIN') return;
+
         if(pId !== gameState.turnIndex && action.type !== 'TRADE_ACCEPT' && action.type !== 'TRADE_DECLINE' && action.type !== 'TRADE_OFFER') return;
         const p = gameState.players[pId];
 
         if(action.type === 'TRADE_OFFER') {
             gameState.activeTrade = { from: pId, to: parseInt(action.target), offer: action.offer, req: action.req };
             broadcastState();
-            processAITradeResponse(gameState.activeTrade.to);
+            // Force AI Check
+            const targetP = gameState.players[gameState.activeTrade.to];
+            if(targetP && targetP.isAI) processAITurn(); 
             return;
         }
         if(action.type === 'TRADE_DECLINE') {
@@ -605,8 +630,16 @@
             gameState.turnPhase = 'TRADE_SHOWCASE';
             broadcastState();
 
+            // Show on Host Overlay too
+            document.getElementById('tr-details-host').innerHTML = `
+                <div><b>${gameState.tradeNotification.p1}</b> gave $${gameState.tradeNotification.gMoney} & ${gameState.tradeNotification.gProps.length} props</div>
+                <div><b>${gameState.tradeNotification.p2}</b> gave $${gameState.tradeNotification.rMoney} & ${gameState.tradeNotification.rProps.length} props</div>
+            `;
+            document.getElementById('trade-result-overlay-host').style.display = 'flex';
+
             setTimeout(() => {
                 gameState.tradeNotification = null;
+                document.getElementById('trade-result-overlay-host').style.display = 'none';
                 gameState.turnPhase = 'IDLE';
                 broadcastState();
                 processAITurn();
@@ -1047,13 +1080,47 @@
         });
         
         if(targetId === null && firstAvailable !== null) targetId = firstAvailable;
-        if(targetId !== null) showTradeBuilder(targetId);
+        if(targetId !== null) {
+            const initialTab = tabs.querySelector(`[data-id="${targetId}"]`);
+            // Highlight initial tab
+            // But we didn't add data-id attr above. Add it now?
+            // Actually manual click sim is fine or just call showTradeBuilder
+            // Let's just fix the border for the first one manually
+             // The logic above sets click handler. 
+            // We just need to trigger the click on the correct tab element
+            // Simple way:
+            const allTabs = tabs.querySelectorAll('.trade-tab');
+            // find index
+             let targetIndex = -1;
+             gameState.players.forEach((p, idx) => { if(p.id === targetId) targetIndex = idx; });
+             // This is tricky because `gameState.players` contains ME. `tabs` does not.
+             // Just click the first one if target is null, or find by text.
+             if(allTabs.length > 0) allTabs[0].click();
+        } 
     }
+    
+    // Close Trade Logic
+    function closeTrade() {
+        document.getElementById('trade-ui').style.display = 'none';
+        document.getElementById('trade-step-2').style.display = 'none';
+        document.getElementById('trade-step-1').style.display = 'block'; // Reset
+    }
+
+    // Dismissal
+    document.getElementById('trade-ui').onclick = (e) => {
+        if(e.target.id === 'trade-ui') closeTrade();
+    };
 
     function showTradeBuilder(tid) {
         tradeTarget = tid;
-        document.getElementById('trade-step-1').style.display = 'none';
+        document.getElementById('trade-step-1').style.display = 'none'; 
         document.getElementById('trade-step-2').style.display = 'flex';
+        // Update Balances
+        const me = gameState.players.find(p => p.id === myId);
+        const partner = gameState.players.find(p => p.id === tid);
+        document.getElementById('trade-my-money-disp').innerText = `($${me.money})`;
+        document.getElementById('trade-their-money-disp').innerText = `($${partner.money})`;
+        
         fillTradeList('trade-give-list', myId);
         fillTradeList('trade-get-list', tid);
     }
@@ -1063,7 +1130,13 @@
         el.innerHTML = '';
         
         const owned = [];
-        clientPropState.forEach((p, idx) => { if(p.owner === pid) owned.push({...boardMap[idx], idx: idx}); });
+        // Fix: Use boardMap directly but check ownership from clientPropState which is synced from host
+        // clientPropState is array [{owner: x, houses: y}, ...] corresponding to boardMap indices
+        clientPropState.forEach((pState, idx) => { 
+            if(pState.owner === pid) {
+                owned.push({...boardMap[idx], idx: idx}); 
+            }
+        });
         
         if(owned.length === 0) { el.innerHTML = '<div style="color:#aaa; text-align:center;">Empty</div>'; return; }
 
@@ -1083,8 +1156,9 @@
             groups[grp].forEach(p => {
                 const row = document.createElement('div');
                 row.className = 'trade-item';
-                row.style.borderLeft = `5px solid var(--${p.group})`; 
-                row.innerHTML = `<span>${p.name}</span><input type="checkbox" class="trade-check" data-idx="${p.idx}">`;
+                row.style.borderLeft = `5px solid var(--${grp.replace('bg-','')})`; // CSS var not def, standard colors instead?
+                // Just rely on group header color.
+                row.innerHTML = `<span class="trade-prop-name ${grp}">${p.name}</span><input type="checkbox" class="trade-check" data-idx="${p.idx}">`;
                 el.appendChild(row);
             });
         });
@@ -1106,10 +1180,6 @@
         closeTrade();
     }
 
-    function closeTrade() {
-        document.getElementById('trade-ui').style.display = 'none';
-        document.getElementById('trade-step-2').style.display = 'none';
-    }
 
     function respondTrade(accept) {
         send(accept ? 'TRADE_ACCEPT' : 'TRADE_DECLINE');
