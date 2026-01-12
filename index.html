@@ -78,7 +78,6 @@
         
         .token { position: absolute; width: 3.5%; height: 3.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: top 0.25s linear, left 0.25s linear; z-index: 20; box-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         
-        /* BUILDINGS ON MAP */
         .building { position: absolute; z-index: 10; border: 1px solid rgba(0,0,0,0.5); box-shadow: 1px 1px 2px black; }
         .b-house { width: 1.5%; height: 1.5%; background: #2ecc71; }
         .b-hotel { width: 3%; height: 1.5%; background: #e74c3c; }
@@ -98,6 +97,10 @@
         .trade-icon-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.1); }
         .c-balance { font-size: 2rem; color: #2ecc71; font-weight: bold; }
         
+        /* NEW: DEBT STYLE */
+        .balance-debt { color: #e74c3c !important; animation: blink 2s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
         .money-popup { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); padding: 20px 40px; border-radius: 15px; font-size: 3rem; font-weight: 900; color: white; z-index: 1000; animation: popFade 2.5s forwards; text-shadow: 2px 2px 0 #000; pointer-events: none; }
         .mp-gain { background: rgba(39, 174, 96, 0.9); border: 3px solid #2ecc71; }
         .mp-loss { background: rgba(192, 57, 43, 0.9); border: 3px solid #e74c3c; }
@@ -122,6 +125,9 @@
         
         .monopoly-glow { box-shadow: 0 0 15px gold; border: 2px solid gold; }
         .monopoly-badge { background: gold; color: black; font-weight: bold; font-size: 0.6rem; text-align: center; padding: 2px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .mortgaged-badge { background: #333; color: white; font-weight: bold; font-size: 0.6rem; text-align: center; padding: 2px; text-transform: uppercase; }
+        .mortgaged-style { background: repeating-linear-gradient(45deg, #eee, #eee 10px, #ccc 10px, #ccc 20px); opacity: 0.8; }
 
         .stack-header { height: 25px; border-radius: 5px 5px 0 0; border-bottom: 2px solid black; }
         .stack-body { flex-grow: 1; display: flex; flex-direction: column; padding: 5px; overflow: hidden; }
@@ -132,7 +138,7 @@
         .swipe-container { flex-grow: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; align-items: center; padding: 0 25px; gap: 15px; }
         .swipe-item { scroll-snap-align: center; flex: 0 0 auto; width: 300px; display: flex; justify-content: center; pointer-events: auto; position: relative; }
         
-        .build-btn-container { margin-top: 10px; width: 100%; display: flex; gap: 5px; }
+        .build-btn-container { margin-top: 10px; width: 100%; display: flex; flex-direction: column; gap: 5px; }
         .ghost-house-indicator { color: #2ecc71; font-weight: bold; margin-top: 5px; animation: pulse 1s infinite; text-shadow: 0 0 5px black; }
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
@@ -150,10 +156,17 @@
         .trade-prop-name { flex-grow:1; font-weight:bold; padding:2px 5px; border-radius:3px; color:black; text-shadow:none; margin-right:10px; }
         .trade-check { transform: scale(1.3); }
 
-        .tr-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(46, 204, 113, 0.95); z-index:700; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; animation:popIn 0.3s; }
-        .tr-box { background:white; color:black; padding:30px; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.5); width:90%; max-width:400px; }
-        .tr-title { font-size: 2rem; font-weight: 900; color:#27ae60; margin-bottom:10px; }
-        .tr-detail { font-size:1.1rem; margin:10px 0; border-bottom:1px solid #eee; padding-bottom:5px; }
+        /* NEW ANIMATED TRADE OVERLAY */
+        .tr-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:700; display:none; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }
+        
+        .trade-anim-container { display:flex; justify-content:space-between; width:100%; max-width:800px; height:300px; position:relative; align-items:center; }
+        .ta-side { width:40%; display:flex; flex-direction:column; align-items:center; color:white; font-weight:bold; font-size:1.5rem; z-index:2; }
+        .ta-center { width:20%; display:flex; justify-content:center; align-items:center; font-size:3rem; z-index:2; }
+        
+        .flying-card { width:60px; height:80px; background:white; border-radius:5px; border:2px solid black; position:absolute; display:flex; justify-content:center; align-items:center; font-size:0.6rem; color:black; font-weight:bold; text-align:center; box-shadow:0 0 10px rgba(0,0,0,0.5); z-index:1; }
+        
+        @keyframes flyRight { 0% { left: 10%; opacity:1; transform:scale(1) rotate(0deg); } 50% { transform:scale(1.2) rotate(10deg); } 100% { left: 80%; opacity:0; transform:scale(0.5) rotate(20deg); } }
+        @keyframes flyLeft { 0% { right: 10%; opacity:1; transform:scale(1) rotate(0deg); } 50% { transform:scale(1.2) rotate(-10deg); } 100% { right: 80%; opacity:0; transform:scale(0.5) rotate(-20deg); } }
 
         #error-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; z-index: 1000; font-weight: bold; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
@@ -218,13 +231,11 @@
     </div>
 
     <div id="host-screen" class="screen">
-        <div id="trade-result-overlay-host" class="tr-overlay">
-            <div class="tr-box">
-                <div class="tr-title">TRADE ACCEPTED!</div>
-                <div id="tr-details-host" style="font-size:0.9rem; color:#555;"></div>
-                <div style="margin-top:20px; font-weight:bold; color:#aaa;">Resuming in 10s...</div>
-            </div>
+        <div id="trade-anim-overlay" class="tr-overlay">
+            <div class="tr-title" style="margin-bottom:30px;">TRADE SUCCESSFUL</div>
+            <div class="trade-anim-container" id="host-trade-anim-area"></div>
         </div>
+
         <div id="dice-overlay" class="overlay-layer">
             <div style="width:300px; height:150px; background:transparent; display:flex; justify-content:center; align-items:center; flex-direction:column;">
                 <div id="dice-container-host" class="dice-container"></div>
@@ -243,12 +254,9 @@
     </div>
 
     <div id="client-screen" class="screen">
-        <div id="trade-result-overlay" class="tr-overlay" onclick="closeSwipe(event)">
-            <div class="tr-box">
-                <div class="tr-title">TRADE ACCEPTED!</div>
-                <div id="tr-details" style="font-size:0.9rem; color:#555;"></div>
-                <div style="margin-top:20px; font-weight:bold; color:#aaa;">Resuming in 10s...</div>
-            </div>
+        <div id="client-trade-anim-overlay" class="tr-overlay">
+            <div class="tr-title" style="margin-bottom:30px;">TRADE SUCCESSFUL</div>
+            <div class="trade-anim-container" id="client-trade-anim-area"></div>
         </div>
 
         <div id="trade-ui" onclick="if(event.target.id==='trade-ui') closeTrade()">
@@ -369,45 +377,45 @@
     const POS = [93.5, 82.2, 74.5, 66.4, 58.2, 50.0, 41.5, 33.6, 25.8, 17.1, 6.5];
     const boardMap = [
         { name: "GO", type: "go", top: POS[0], left: POS[0], side: 'bottom' },
-        { name: "Mediter. Ave", type: "prop", group: "bg-brown", price: 60, rent: [2,10,30,90,160,250], mortgage: 30, build: 50, owner: null, houses: 0, top: POS[0], left: POS[1], side: 'bottom' },
+        { name: "Mediter. Ave", type: "prop", group: "bg-brown", price: 60, rent: [2,10,30,90,160,250], mortgage: 30, build: 50, owner: null, houses: 0, mortgaged: false, top: POS[0], left: POS[1], side: 'bottom' },
         { name: "Comm. Chest", type: "chest", top: POS[0], left: POS[2], side: 'bottom' },
-        { name: "Baltic Ave", type: "prop", group: "bg-brown", price: 60, rent: [4,20,60,180,320,450], mortgage: 30, build: 50, owner: null, houses: 0, top: POS[0], left: POS[3], side: 'bottom' },
+        { name: "Baltic Ave", type: "prop", group: "bg-brown", price: 60, rent: [4,20,60,180,320,450], mortgage: 30, build: 50, owner: null, houses: 0, mortgaged: false, top: POS[0], left: POS[3], side: 'bottom' },
         { name: "Income Tax", type: "tax", cost: 200, top: POS[0], left: POS[4], side: 'bottom' },
-        { name: "Reading RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[0], left: POS[5], side: 'bottom' },
-        { name: "Oriental Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6,30,90,270,400,550], mortgage: 50, build: 50, owner: null, houses: 0, top: POS[0], left: POS[6], side: 'bottom' },
+        { name: "Reading RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, mortgaged: false, top: POS[0], left: POS[5], side: 'bottom' },
+        { name: "Oriental Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6,30,90,270,400,550], mortgage: 50, build: 50, owner: null, houses: 0, mortgaged: false, top: POS[0], left: POS[6], side: 'bottom' },
         { name: "Chance", type: "chance", top: POS[0], left: POS[7], side: 'bottom' },
-        { name: "Vermont Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6,30,90,270,400,550], mortgage: 50, build: 50, owner: null, houses: 0, top: POS[0], left: POS[8], side: 'bottom' },
-        { name: "Conn. Ave", type: "prop", group: "bg-lightblue", price: 120, rent: [8,40,100,300,450,600], mortgage: 60, build: 50, owner: null, houses: 0, top: POS[0], left: POS[9], side: 'bottom' },
+        { name: "Vermont Ave", type: "prop", group: "bg-lightblue", price: 100, rent: [6,30,90,270,400,550], mortgage: 50, build: 50, owner: null, houses: 0, mortgaged: false, top: POS[0], left: POS[8], side: 'bottom' },
+        { name: "Conn. Ave", type: "prop", group: "bg-lightblue", price: 120, rent: [8,40,100,300,450,600], mortgage: 60, build: 50, owner: null, houses: 0, mortgaged: false, top: POS[0], left: POS[9], side: 'bottom' },
         { name: "Jail", type: "jail", top: POS[0], left: POS[10], side: 'bottom' },
-        { name: "St. Charles", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, top: POS[1], left: POS[10], side: 'left' },
-        { name: "Electric Co", type: "prop", group: "bg-gray", price: 150, rent: [], mortgage: 75, build: 0, owner: null, houses: 0, top: POS[2], left: POS[10], side: 'left' },
-        { name: "States Ave", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, top: POS[3], left: POS[10], side: 'left' },
-        { name: "Virginia Ave", type: "prop", group: "bg-pink", price: 160, rent: [12,60,180,500,700,900], mortgage: 80, build: 100, owner: null, houses: 0, top: POS[4], left: POS[10], side: 'left' },
-        { name: "Penn RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[5], left: POS[10], side: 'left' },
-        { name: "St. James", type: "prop", group: "bg-orange", price: 180, rent: [14,70,200,550,750,950], mortgage: 90, build: 100, owner: null, houses: 0, top: POS[6], left: POS[10], side: 'left' },
+        { name: "St. Charles", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, mortgaged: false, top: POS[1], left: POS[10], side: 'left' },
+        { name: "Electric Co", type: "prop", group: "bg-gray", price: 150, rent: [], mortgage: 75, build: 0, owner: null, houses: 0, mortgaged: false, top: POS[2], left: POS[10], side: 'left' },
+        { name: "States Ave", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, mortgaged: false, top: POS[3], left: POS[10], side: 'left' },
+        { name: "Virginia Ave", type: "prop", group: "bg-pink", price: 160, rent: [12,60,180,500,700,900], mortgage: 80, build: 100, owner: null, houses: 0, mortgaged: false, top: POS[4], left: POS[10], side: 'left' },
+        { name: "Penn RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, mortgaged: false, top: POS[5], left: POS[10], side: 'left' },
+        { name: "St. James", type: "prop", group: "bg-orange", price: 180, rent: [14,70,200,550,750,950], mortgage: 90, build: 100, owner: null, houses: 0, mortgaged: false, top: POS[6], left: POS[10], side: 'left' },
         { name: "Comm. Chest", type: "chest", top: POS[7], left: POS[10], side: 'left' },
-        { name: "Tennessee", type: "prop", group: "bg-orange", price: 180, rent: [14,70,200,550,750,950], mortgage: 90, build: 100, owner: null, houses: 0, top: POS[8], left: POS[10], side: 'left' },
-        { name: "New York", type: "prop", group: "bg-orange", price: 200, rent: [16,80,220,600,800,1000], mortgage: 100, build: 100, owner: null, houses: 0, top: POS[9], left: POS[10], side: 'left' },
+        { name: "Tennessee", type: "prop", group: "bg-orange", price: 180, rent: [14,70,200,550,750,950], mortgage: 90, build: 100, owner: null, houses: 0, mortgaged: false, top: POS[8], left: POS[10], side: 'left' },
+        { name: "New York", type: "prop", group: "bg-orange", price: 200, rent: [16,80,220,600,800,1000], mortgage: 100, build: 100, owner: null, houses: 0, mortgaged: false, top: POS[9], left: POS[10], side: 'left' },
         { name: "Free Parking", type: "parking", top: POS[10], left: POS[10], side: 'top' },
-        { name: "Kentucky", type: "prop", group: "bg-red", price: 220, rent: [18,90,250,700,875,1050], mortgage: 110, build: 150, owner: null, houses: 0, top: POS[10], left: POS[9], side: 'top' },
+        { name: "Kentucky", type: "prop", group: "bg-red", price: 220, rent: [18,90,250,700,875,1050], mortgage: 110, build: 150, owner: null, houses: 0, mortgaged: false, top: POS[10], left: POS[9], side: 'top' },
         { name: "Chance", type: "chance", top: POS[10], left: POS[8], side: 'top' },
-        { name: "Indiana", type: "prop", group: "bg-red", price: 220, rent: [18,90,250,700,875,1050], mortgage: 110, build: 150, owner: null, houses: 0, top: POS[10], left: POS[7], side: 'top' },
-        { name: "Illinois", type: "prop", group: "bg-red", price: 240, rent: [20,100,300,750,925,1100], mortgage: 120, build: 150, owner: null, houses: 0, top: POS[10], left: POS[6], side: 'top' },
-        { name: "B&O RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[10], left: POS[5], side: 'top' },
-        { name: "Atlantic", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, top: POS[10], left: POS[4], side: 'top' },
-        { name: "Ventnor", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, top: POS[10], left: POS[3], side: 'top' },
-        { name: "Water Works", type: "prop", group: "bg-gray", price: 150, rent: [], mortgage: 75, build: 0, owner: null, houses: 0, top: POS[10], left: POS[2], side: 'top' },
-        { name: "Marvin G.", type: "prop", group: "bg-yellow", price: 280, rent: [24,120,360,850,1025,1200], mortgage: 140, build: 150, owner: null, houses: 0, top: POS[10], left: POS[1], side: 'top' },
+        { name: "Indiana", type: "prop", group: "bg-red", price: 220, rent: [18,90,250,700,875,1050], mortgage: 110, build: 150, owner: null, houses: 0, mortgaged: false, top: POS[10], left: POS[7], side: 'top' },
+        { name: "Illinois", type: "prop", group: "bg-red", price: 240, rent: [20,100,300,750,925,1100], mortgage: 120, build: 150, owner: null, houses: 0, mortgaged: false, top: POS[10], left: POS[6], side: 'top' },
+        { name: "B&O RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, mortgaged: false, top: POS[10], left: POS[5], side: 'top' },
+        { name: "Atlantic", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, mortgaged: false, top: POS[10], left: POS[4], side: 'top' },
+        { name: "Ventnor", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, mortgaged: false, top: POS[10], left: POS[3], side: 'top' },
+        { name: "Water Works", type: "prop", group: "bg-gray", price: 150, rent: [], mortgage: 75, build: 0, owner: null, houses: 0, mortgaged: false, top: POS[10], left: POS[2], side: 'top' },
+        { name: "Marvin G.", type: "prop", group: "bg-yellow", price: 280, rent: [24,120,360,850,1025,1200], mortgage: 140, build: 150, owner: null, houses: 0, mortgaged: false, top: POS[10], left: POS[1], side: 'top' },
         { name: "Go To Jail", type: "gotojail", top: POS[10], left: POS[0], side: 'top' },
-        { name: "Pacific", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, top: POS[9], left: POS[0], side: 'right' },
-        { name: "N. Carolina", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, top: POS[8], left: POS[0], side: 'right' },
+        { name: "Pacific", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, mortgaged: false, top: POS[9], left: POS[0], side: 'right' },
+        { name: "N. Carolina", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, mortgaged: false, top: POS[8], left: POS[0], side: 'right' },
         { name: "Comm. Chest", type: "chest", top: POS[7], left: POS[0], side: 'right' },
-        { name: "Penn Ave", type: "prop", group: "bg-green", price: 320, rent: [28,150,450,1000,1200,1400], mortgage: 160, build: 200, owner: null, houses: 0, top: POS[6], left: POS[0], side: 'right' },
-        { name: "Short Line", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[5], left: POS[0], side: 'right' },
+        { name: "Penn Ave", type: "prop", group: "bg-green", price: 320, rent: [28,150,450,1000,1200,1400], mortgage: 160, build: 200, owner: null, houses: 0, mortgaged: false, top: POS[6], left: POS[0], side: 'right' },
+        { name: "Short Line", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, mortgaged: false, top: POS[5], left: POS[0], side: 'right' },
         { name: "Chance", type: "chance", top: POS[4], left: POS[0], side: 'right' },
-        { name: "Park Place", type: "prop", group: "bg-darkblue", price: 350, rent: [35,175,500,1100,1300,1500], mortgage: 175, build: 200, owner: null, houses: 0, top: POS[3], left: POS[0], side: 'right' },
+        { name: "Park Place", type: "prop", group: "bg-darkblue", price: 350, rent: [35,175,500,1100,1300,1500], mortgage: 175, build: 200, owner: null, houses: 0, mortgaged: false, top: POS[3], left: POS[0], side: 'right' },
         { name: "Luxury Tax", type: "tax", cost: 100, top: POS[2], left: POS[0], side: 'right' },
-        { name: "Boardwalk", type: "prop", group: "bg-darkblue", price: 400, rent: [50,200,600,1400,1700,2000], mortgage: 200, build: 200, owner: null, houses: 0, top: POS[1], left: POS[0], side: 'right' },
+        { name: "Boardwalk", type: "prop", group: "bg-darkblue", price: 400, rent: [50,200,600,1400,1700,2000], mortgage: 200, build: 200, owner: null, houses: 0, mortgaged: false, top: POS[1], left: POS[0], side: 'right' },
     ];
 
     let peer;
@@ -467,6 +475,16 @@
         setTimeout(() => {
             if (gameState.turnIndex !== pId) return;
             
+            // AI Debt Logic - Dumb AI just mortgages everything if in debt
+            if (p.money < 0) {
+                // Find owned property and mortgage it
+                const owned = boardMap.findIndex(prop => prop.owner === p.id && !prop.mortgaged);
+                if (owned !== -1) {
+                    handleHostAction(pId, {type: 'MORTGAGE', propIdx: owned});
+                }
+                return;
+            }
+
             if (gameState.turnPhase === 'ROLLING') {
                 if (p.jailed && p.money >= 600) handleHostAction(pId, {type: 'PAY_JAIL'});
                 else handleHostAction(pId, {type: 'ROLL'});
@@ -481,7 +499,6 @@
         }, 1500);
     }
 
-    // --- NEW SMART AI TRADE LOGIC ---
     function processAITradeResponse(targetId) {
         const ai = gameState.players[targetId];
         if(!ai || !ai.isAI) return;
@@ -643,26 +660,35 @@
         // Strict Turn Check for Game Actions (except join/trade/build)
         if(!gameState.gameStarted && action.type !== 'JOIN') return;
 
-        // Build can happen anytime if it's your turn, but usually restricted to rolling/idle
+        // Build/Mortgage can happen anytime if it's your turn, but usually restricted to rolling/idle
+        // Debt check: if in debt, limit actions? No, they need to mortgage to get out.
+        
         if(pId !== gameState.turnIndex && action.type !== 'TRADE_ACCEPT' && action.type !== 'TRADE_DECLINE' && action.type !== 'TRADE_OFFER') return;
         const p = gameState.players[pId];
 
-        // --- NEW: BUILD HANDLER ---
         if(action.type === 'BUILD') {
             const cost = action.cost;
-            const propsToBuild = action.props; // Array of indices to increment
-
+            const propsToBuild = action.props; 
             if(p.money >= cost) {
                 p.money -= cost;
                 triggerMoneyAnim(p.id, -cost);
-                propsToBuild.forEach(idx => {
-                    if(boardMap[idx].houses < 5) {
-                        boardMap[idx].houses++;
-                    }
-                });
+                propsToBuild.forEach(idx => { if(boardMap[idx].houses < 5) boardMap[idx].houses++; });
                 log(`${p.name} built houses/hotels.`);
                 broadcastState();
-                // If it was smart AI turn logic, we might need a pause, but AI building not implemented yet
+            }
+            return;
+        }
+
+        if(action.type === 'MORTGAGE') {
+            const idx = action.propIdx;
+            const prop = boardMap[idx];
+            if(prop.owner === pId && !prop.mortgaged && prop.houses === 0) {
+                prop.mortgaged = true;
+                const amt = prop.mortgage;
+                p.money += amt;
+                triggerMoneyAnim(p.id, amt);
+                log(`${p.name} mortgaged ${prop.name}`);
+                broadcastState();
             }
             return;
         }
@@ -689,38 +715,32 @@
             pFrom.money = pFrom.money - trade.offer.money + trade.req.money;
             pTo.money = pTo.money - trade.req.money + trade.offer.money;
 
-            trade.offer.props.forEach(idx => { boardMap[idx].owner = trade.to; boardMap[idx].houses = 0; }); // Reset houses on trade rule
-            trade.req.props.forEach(idx => { boardMap[idx].owner = trade.from; boardMap[idx].houses = 0; });
+            trade.offer.props.forEach(idx => { boardMap[idx].owner = trade.to; boardMap[idx].houses = 0; boardMap[idx].mortgaged = false; }); // Reset houses/mortgage? Mortgage usually stays
+            trade.req.props.forEach(idx => { boardMap[idx].owner = trade.from; boardMap[idx].houses = 0; boardMap[idx].mortgaged = false; });
 
             log("Trade Completed!");
             
+            // Trigger Animation Data
+            const animData = {
+                type: 'TRADE_ANIM',
+                leftName: pFrom.name, rightName: pTo.name,
+                leftItems: trade.offer.props.map(i => boardMap[i].name).concat(trade.offer.money > 0 ? [`$${trade.offer.money}`] : []),
+                rightItems: trade.req.props.map(i => boardMap[i].name).concat(trade.req.money > 0 ? [`$${trade.req.money}`] : [])
+            };
+            Object.values(connections).forEach(c => c.send(animData));
+            showTradeAnimation(animData); // Host view
+
             if(trade.req.money > 0) { triggerMoneyAnim(trade.from, -trade.req.money); triggerMoneyAnim(trade.to, trade.req.money); }
             if(trade.offer.money > 0) { triggerMoneyAnim(trade.from, trade.offer.money); triggerMoneyAnim(trade.to, -trade.offer.money); }
 
-            gameState.tradeNotification = {
-                title: "TRADE ACCEPTED",
-                p1: pFrom.name, p2: pTo.name,
-                gMoney: trade.offer.money, gProps: trade.offer.props,
-                rMoney: trade.req.money, rProps: trade.req.props
-            };
             gameState.activeTrade = null;
-            gameState.turnPhase = 'TRADE_SHOWCASE';
             broadcastState();
 
-            // Show on Host Overlay too
-            document.getElementById('tr-details-host').innerHTML = `
-                <div><b>${gameState.tradeNotification.p1}</b> gave $${gameState.tradeNotification.gMoney} & ${gameState.tradeNotification.gProps.length} props</div>
-                <div><b>${gameState.tradeNotification.p2}</b> gave $${gameState.tradeNotification.rMoney} & ${gameState.tradeNotification.rProps.length} props</div>
-            `;
-            document.getElementById('trade-result-overlay-host').style.display = 'flex';
-
             setTimeout(() => {
-                gameState.tradeNotification = null;
-                document.getElementById('trade-result-overlay-host').style.display = 'none';
                 gameState.turnPhase = 'IDLE';
                 broadcastState();
                 processAITurn();
-            }, 10000);
+            }, 6000); // Wait for anim
             return;
         }
 
@@ -740,6 +760,7 @@
         }
 
         if(action.type === 'ROLL' && gameState.turnPhase === 'ROLLING') {
+            if(p.money < 0) return; // Debt Lock
             const d1 = Math.ceil(Math.random()*6);
             const d2 = Math.ceil(Math.random()*6);
             const total = d1+d2;
@@ -747,17 +768,13 @@
             showDiceResult(d1, d2);
 
             setTimeout(() => {
-                // Check for Doubles
                 if(d1 === d2 && !p.jailed) {
                     p.doublesStreak++;
                     if(p.doublesStreak === 3) {
                         log("3 Doubles in a row! Go to Jail.");
                         p.doublesStreak = 0;
                         gameState.waitingForReRoll = false;
-                        p.position = 10; 
-                        p.jailed = true; 
-                        p.jailTurns = 0; 
-                        updateToken(p);
+                        p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p);
                         gameState.turnPhase = 'IDLE';
                         broadcastState();
                         processAITurn();
@@ -801,7 +818,6 @@
                 p.money -= sq.price;
                 triggerMoneyAnim(p.id, -sq.price);
                 sq.owner = pId;
-                addOwnerBar(gameState.pendingProp, p.colorClass);
                 log(`Bought ${sq.name}`);
             }
             checkNextPhase();
@@ -824,11 +840,12 @@
             }
         }
         else if(action.type === 'END_TURN') {
+            if(p.money < 0) return; // Debt Lock
             gameState.turnPhase = 'ROLLING';
             gameState.pendingProp = null;
             gameState.activeCard = null;
             gameState.waitingForReRoll = false;
-            p.doublesStreak = 0; // Reset just in case
+            p.doublesStreak = 0; 
             gameState.turnIndex = (gameState.turnIndex + 1) % gameState.players.length;
             broadcastState();
             processAITurn();
@@ -855,12 +872,7 @@
         } 
         else if(card.action === 'money') { p.money += card.amount; triggerMoneyAnim(p.id, card.amount); done = true; }
         else if(card.action === 'back_3') { gameState.movedByCard = true; movePlayerSequence(p, -3); }
-        else if(card.action === 'gotojail') { 
-            p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); 
-            log("Sent to Jail!"); 
-            gameState.waitingForReRoll = false; // Lose turn even if it was doubles
-            done = true; 
-        }
+        else if(card.action === 'gotojail') { p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); gameState.waitingForReRoll = false; done = true; }
         else if(card.action === 'nearest_util') {
             let pos = p.position; let target = 12;
             if (pos >= 12 && pos < 28) target = 28; else if (pos >= 28) target = 12;
@@ -912,27 +924,25 @@
                     processAITurn();
                 } else { log("Can't afford property."); checkNextPhase(); }
             } else if (sq.owner !== p.id) {
-                if(gameState.players[sq.owner].jailed && !gameState.rules.jailRent) {
+                if (sq.mortgaged) {
+                    log("Property is mortgaged. No rent.");
+                } else if(gameState.players[sq.owner].jailed && !gameState.rules.jailRent) {
                     log("Owner is jailed. No rent.");
                 } else {
                     let rent = 0;
-                    if(sq.group === 'bg-gray') { // Utilities
-                        const ownerProps = boardMap.filter(s => s.group === 'bg-gray' && s.owner === sq.owner).length;
+                    if(sq.group === 'bg-gray') { 
+                        const ownerProps = boardMap.filter(s => s.group === 'bg-gray' && s.owner === sq.owner && !s.mortgaged).length;
                         rent = (ownerProps === 2 ? 10 : 4) * diceTotal;
                         log(`Utility Rent: $${rent} (${ownerProps === 2 ? '10x' : '4x'} roll)`);
-                    } else if (sq.group === 'bg-black') { // Railroads
-                        const ownerProps = boardMap.filter(s => s.group === 'bg-black' && s.owner === sq.owner).length;
-                        rent = sq.rent[ownerProps - 1];
-                    } else { // Normal Property
+                    } else if (sq.group === 'bg-black') { 
+                        const ownerProps = boardMap.filter(s => s.group === 'bg-black' && s.owner === sq.owner && !s.mortgaged).length;
+                        rent = sq.rent[ownerProps - 1] || 0; // fallback 0 if calculation weird
+                    } else { 
                         rent = sq.rent[sq.houses];
                         if(sq.houses === 0) {
-                            // Check if full set owned for 2x rent
                             const groupProps = boardMap.filter(s => s.group === sq.group);
                             const isMonopoly = groupProps.every(s => s.owner === sq.owner);
-                            if(isMonopoly) {
-                                rent *= 2;
-                                log("Monopoly! Rent doubled.");
-                            }
+                            if(isMonopoly) { rent *= 2; log("Monopoly! Rent doubled."); }
                         }
                     }
                     
@@ -960,7 +970,7 @@
         else if(sq.type === 'gotojail') {
             p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); 
             log("Sent to Jail!"); 
-            gameState.waitingForReRoll = false; // Turn ends on Jail
+            gameState.waitingForReRoll = false; 
             checkNextPhase();
         }
         else { checkNextPhase(); }
@@ -997,16 +1007,23 @@
         el.style.top = (sq.top + off.y) + '%'; 
         el.style.left = (sq.left + off.x) + '%';
     }
-    function addOwnerBar(idx, color) {
-        const sq = boardMap[idx];
-        const m = document.createElement('div'); m.className = `owner-bar bar-${sq.side} ${color}`;
-        m.style.top = (sq.side === 'left' || sq.side === 'right') ? sq.top + '%' : '';
-        m.style.left = (sq.side === 'top' || sq.side === 'bottom') ? sq.left + '%' : '';
-        document.getElementById('board-wrapper').appendChild(m);
+    
+    function renderOwnerBars() {
+        document.querySelectorAll('.owner-bar').forEach(el => el.remove());
+        boardMap.forEach((sq, idx) => {
+            if(sq.owner !== null && sq.type === 'prop') {
+                const p = gameState.players[sq.owner];
+                const m = document.createElement('div'); 
+                m.className = `owner-bar bar-${sq.side} ${p.colorClass}`;
+                m.style.top = (sq.side === 'left' || sq.side === 'right') ? sq.top + '%' : '';
+                m.style.left = (sq.side === 'top' || sq.side === 'bottom') ? sq.left + '%' : '';
+                document.getElementById('board-wrapper').appendChild(m);
+            }
+        });
     }
+
     function updatePot() { document.getElementById('pot-amount').innerText = gameState.potMoney; }
     
-    // --- UPDATED: RENDER BUILDINGS ---
     function renderBuildings() {
         document.querySelectorAll('.building').forEach(el => el.remove());
         boardMap.forEach((sq, idx) => {
@@ -1014,13 +1031,9 @@
                 const count = sq.houses;
                 const isHotel = count === 5;
                 const bType = isHotel ? 'b-hotel' : 'b-house';
-                
-                // Determine base offset based on side
                 let baseTop = sq.top;
                 let baseLeft = sq.left;
                 
-                // Slightly offset buildings so they don't cover player tokens or owner bars completely
-                // Simple logic: Place them "inside" the board relative to the slot
                 if(sq.side === 'bottom') baseTop -= 5;
                 if(sq.side === 'top') baseTop += 5;
                 if(sq.side === 'left') baseLeft += 5;
@@ -1029,15 +1042,12 @@
                 if(isHotel) {
                     const h = document.createElement('div');
                     h.className = `building ${bType}`;
-                    h.style.top = baseTop + '%';
-                    h.style.left = baseLeft + '%';
+                    h.style.top = baseTop + '%'; h.style.left = baseLeft + '%';
                     document.getElementById('board-wrapper').appendChild(h);
                 } else {
-                    // Render up to 4 houses. Spacing them out slightly.
                     for(let i=0; i<count; i++) {
                          const h = document.createElement('div');
                         h.className = `building ${bType}`;
-                        // Tiny offsets for multiple houses
                         let offX = (i%2) * 2 - 1; 
                         let offY = Math.floor(i/2) * 2 - 1;
                         h.style.top = (baseTop + offY) + '%';
@@ -1055,7 +1065,7 @@
             const border = i===gameState.turnIndex ? '2px solid white' : 'none';
             return `<div style="padding:10px; background:rgba(255,255,255,0.1); margin-bottom:5px; border:${border}; display:flex; justify-content:space-between;">
                 <div style="display:flex; gap:5px;"><div style="width:20px; height:20px; background:${getColorHex(p.colorClass)}; border-radius:50%"></div> ${p.name}</div>
-                <div style="color:#2ecc71; font-weight:bold;">$${p.money}</div></div>`;
+                <div style="color:${p.money<0?'#e74c3c':'#2ecc71'}; font-weight:bold;">$${p.money}</div></div>`;
         }).join('');
     }
     function showOverlay(text, type) {
@@ -1071,7 +1081,8 @@
         if(msg) log(msg);
         renderGameList();
         renderBuildings();
-        const propData = boardMap.map(s => ({owner: s.owner, houses: s.houses}));
+        renderOwnerBars();
+        const propData = boardMap.map(s => ({owner: s.owner, houses: s.houses, mortgaged: s.mortgaged}));
         const payload = {
             type: 'STATE',
             players: gameState.players,
@@ -1084,6 +1095,36 @@
             tradeNotification: gameState.tradeNotification
         };
         Object.values(connections).forEach(c => c.send(payload));
+    }
+
+    function showTradeAnimation(data) {
+        const overlay = document.getElementById('trade-anim-overlay'); // Host
+        const container = document.getElementById('host-trade-anim-area');
+        container.innerHTML = `
+            <div class="ta-side">${data.leftName}</div>
+            <div class="ta-center">🤝</div>
+            <div class="ta-side">${data.rightName}</div>
+        `;
+        
+        // Spawn cards
+        data.leftItems.forEach((item, i) => {
+            const card = document.createElement('div');
+            card.className = 'flying-card';
+            card.innerText = item;
+            card.style.animation = `flyRight 2s forwards ${i*0.2}s`;
+            container.appendChild(card);
+        });
+        
+        data.rightItems.forEach((item, i) => {
+            const card = document.createElement('div');
+            card.className = 'flying-card';
+            card.innerText = item;
+            card.style.animation = `flyLeft 2s forwards ${i*0.2}s`;
+            container.appendChild(card);
+        });
+
+        overlay.style.display = 'flex';
+        setTimeout(() => { overlay.style.display = 'none'; }, 5500);
     }
 
     // --- CLIENT ---
@@ -1121,6 +1162,24 @@
             if(myId === data.pId) showMoneyAnim(data.amount);
             return;
         }
+        if(data.type === 'TRADE_ANIM') {
+            const overlay = document.getElementById('client-trade-anim-overlay');
+            const container = document.getElementById('client-trade-anim-area');
+            container.innerHTML = `
+                <div class="ta-side">${data.leftName}</div>
+                <div class="ta-center">🤝</div>
+                <div class="ta-side">${data.rightName}</div>
+            `;
+            data.leftItems.forEach((item, i) => {
+                const card = document.createElement('div'); card.className = 'flying-card'; card.innerText = item; card.style.animation = `flyRight 2s forwards ${i*0.2}s`; container.appendChild(card);
+            });
+            data.rightItems.forEach((item, i) => {
+                const card = document.createElement('div'); card.className = 'flying-card'; card.innerText = item; card.style.animation = `flyLeft 2s forwards ${i*0.2}s`; container.appendChild(card);
+            });
+            overlay.style.display = 'flex';
+            setTimeout(() => { overlay.style.display = 'none'; }, 5500);
+            return;
+        }
         if(data.type === 'WELCOME') { switchScreen('client-screen'); myId = data.player.id; document.getElementById('c-name').innerText = data.player.name; lastBalance = data.player.money; }
         else if(data.type === 'ERROR') { showError(data.msg); document.getElementById('btn-connect').innerText = "CONNECT"; }
         else if(data.type === 'LOBBY_UPDATE') { document.getElementById('c-status').innerText = "Host is configuring rules..."; }
@@ -1155,7 +1214,12 @@
             setTimeout(() => el.remove(), 2500);
             lastBalance = me.money;
         }
-        document.getElementById('c-balance').innerText = `$${me.money}`;
+        
+        // DEBT UPDATE
+        const balEl = document.getElementById('c-balance');
+        balEl.innerText = `$${me.money}`;
+        if(me.money < 0) balEl.classList.add('balance-debt'); else balEl.classList.remove('balance-debt');
+
         const isMyTurn = state.turnIndex === myId;
         clientTurnState = isMyTurn; 
 
@@ -1166,18 +1230,9 @@
         document.getElementById('client-overlay-card').style.display = 'none';
         document.getElementById('inventory-grid').style.display = 'none';
         document.getElementById('incoming-trade-overlay').style.display = 'none';
-        document.getElementById('trade-result-overlay').style.display = 'none';
-
-        if(state.tradeNotification) {
-            const tn = state.tradeNotification;
-            document.getElementById('tr-details').innerHTML = `
-                <div><b>${tn.p1}</b> gave $${tn.gMoney} & ${tn.gProps.length} props</div>
-                <div><b>${tn.p2}</b> gave $${tn.rMoney} & ${tn.rProps.length} props</div>
-            `;
-            document.getElementById('trade-result-overlay').style.display = 'flex';
-            document.getElementById('c-status').innerText = "Trade Showcase...";
-            return; 
-        }
+        
+        // ENABLE TRADE IN ROLLING
+        document.getElementById('trade-btn').style.display = (isMyTurn && (state.turnPhase === 'IDLE' || state.turnPhase === 'ROLLING')) ? 'flex' : 'none';
 
         if(state.activeTrade) {
             if(state.activeTrade.to === myId) {
@@ -1191,8 +1246,6 @@
         }
 
         let showInventory = true;
-
-        document.getElementById('trade-btn').style.display = (isMyTurn && state.turnPhase === 'IDLE') ? 'flex' : 'none';
 
         if(state.turnPhase === 'DECIDING' && isMyTurn) {
             showInventory = false;
@@ -1211,7 +1264,10 @@
         }
         else if(isMyTurn) {
             document.getElementById('c-status').innerText = "YOUR TURN";
-            if(state.turnPhase === 'ROLLING') {
+            if (me.money < 0) {
+                con.innerHTML = `<div style="text-align:center; color:#e74c3c; font-weight:bold; font-size:1.2rem;">YOU ARE IN DEBT!<br>Sell or Mortgage properties.</div>`;
+            }
+            else if(state.turnPhase === 'ROLLING') {
                 if(me.jailed) {
                     con.innerHTML = `
                         <div style="text-align:center; margin-bottom:10px; color:#e74c3c; font-weight:bold;">YOU ARE IN JAIL (Turn ${me.jailTurns}/3)</div>
@@ -1367,7 +1423,7 @@
         clientPropState.forEach((pState, index) => {
             if(pState.owner === myId) {
                 const staticData = boardMap[index];
-                myProps.push({...staticData, houses: pState.houses, originalIndex: index});
+                myProps.push({...staticData, houses: pState.houses, mortgaged: pState.mortgaged, originalIndex: index});
             }
         });
         if(myProps.length === 0) { container.innerHTML = '<div style="color:#888; margin-top:20px;">No properties owned</div>'; return; }
@@ -1408,6 +1464,7 @@
             props.forEach(p => {
                 const n = document.createElement('div');
                 n.className = 'prop-name-mini';
+                if(p.mortgaged) n.style.textDecoration = 'line-through';
                 n.innerText = p.name + (p.houses > 0 ? (p.houses===5 ? ' [H]' : ` [${p.houses}]`) : '');
                 body.appendChild(n);
             });
@@ -1420,25 +1477,29 @@
         const hl = (idx) => (houseCount === idx ? 'rent-highlight' : '');
         let html = `<div class="deed-header ${p.group}">${p.name}</div><div class="deed-body">`;
         
-        if (p.group === 'bg-gray') { // Utilities
-            html += `<div class="deed-text-block">If one Utility is owned,<br>rent is 4x amount shown on dice.</div>`;
-            html += `<div class="deed-text-block">If both Utilities are owned,<br>rent is 10x amount shown on dice.</div>`;
-        } else if (p.group === 'bg-black') { // Railroads
-             html += `<div class="rent-row"><span>Rent</span><span>$25</span></div>`;
-             html += `<div class="rent-row"><span>If 2 R.R.'s are owned</span><span>$50</span></div>`;
-             html += `<div class="rent-row"><span>If 3 R.R.'s are owned</span><span>$100</span></div>`;
-             html += `<div class="rent-row"><span>If 4 R.R.'s are owned</span><span>$200</span></div>`;
+        if (p.mortgaged) {
+            html += `<div class="mortgaged-badge">MORTGAGED</div><div class="deed-text-block">Mortgaged for $${p.mortgage}<br>No rent collected.</div>`;
         } else {
-            let baseStyle = houseCount === 0 ? 'background-color:#f1c40f; font-weight:bold; border-radius:4px;' : '';
-            html += `<div style="text-align:center; margin-bottom:10px; ${baseStyle}">Rent $${p.rent[0]}</div>`;
-            html += `<div class="rent-row ${hl(1)}"><span>1 House</span><span>$${p.rent[1]}</span></div>`;
-            html += `<div class="rent-row ${hl(2)}"><span>2 Houses</span><span>$${p.rent[2]}</span></div>`;
-            html += `<div class="rent-row ${hl(3)}"><span>3 Houses</span><span>$${p.rent[3]}</span></div>`;
-            html += `<div class="rent-row ${hl(4)}"><span>4 Houses</span><span>$${p.rent[4]}</span></div>`;
-            html += `<div class="rent-row ${hl(5)}"><span>HOTEL</span><span>$${p.rent[5]}</span></div>`;
+            if (p.group === 'bg-gray') { // Utilities
+                html += `<div class="deed-text-block">If one Utility is owned,<br>rent is 4x amount shown on dice.</div>`;
+                html += `<div class="deed-text-block">If both Utilities are owned,<br>rent is 10x amount shown on dice.</div>`;
+            } else if (p.group === 'bg-black') { // Railroads
+                 html += `<div class="rent-row"><span>Rent</span><span>$25</span></div>`;
+                 html += `<div class="rent-row"><span>If 2 R.R.'s are owned</span><span>$50</span></div>`;
+                 html += `<div class="rent-row"><span>If 3 R.R.'s are owned</span><span>$100</span></div>`;
+                 html += `<div class="rent-row"><span>If 4 R.R.'s are owned</span><span>$200</span></div>`;
+            } else {
+                let baseStyle = houseCount === 0 ? 'background-color:#f1c40f; font-weight:bold; border-radius:4px;' : '';
+                html += `<div style="text-align:center; margin-bottom:10px; ${baseStyle}">Rent $${p.rent[0]}</div>`;
+                html += `<div class="rent-row ${hl(1)}"><span>1 House</span><span>$${p.rent[1]}</span></div>`;
+                html += `<div class="rent-row ${hl(2)}"><span>2 Houses</span><span>$${p.rent[2]}</span></div>`;
+                html += `<div class="rent-row ${hl(3)}"><span>3 Houses</span><span>$${p.rent[3]}</span></div>`;
+                html += `<div class="rent-row ${hl(4)}"><span>4 Houses</span><span>$${p.rent[4]}</span></div>`;
+                html += `<div class="rent-row ${hl(5)}"><span>HOTEL</span><span>$${p.rent[5]}</span></div>`;
+            }
         }
         
-        html += `<div style="margin-top:10px; border-top:1px solid #ccc; padding-top:5px; text-align:center;">Mortgage: $${p.mortgage}<br>Houses cost $${p.build}</div></div>`;
+        html += `<div style="margin-top:10px; border-top:1px solid #ccc; padding-top:5px; text-align:center;">Mortgage Value: $${p.mortgage}<br>Houses cost $${p.build}</div></div>`;
         return html;
     }
 
@@ -1451,7 +1512,6 @@
         cont.innerHTML = '';
         
         const group = props[0].group;
-        // Check if monopoly for building button
         const totalInGroup = boardMap.filter(x => x.group === group).length;
         const isMonopoly = props.length === totalInGroup && totalInGroup > 0 && group !== 'bg-black' && group !== 'bg-gray';
 
@@ -1460,7 +1520,6 @@
             wrap.className = 'swipe-item';
             wrap.onclick = (e) => closeSwipe(e); 
             
-            // Container for card + build actions
             const itemCont = document.createElement('div');
             itemCont.style.display = "flex";
             itemCont.style.flexDirection = "column";
@@ -1470,13 +1529,17 @@
             card.style.cssText = "background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;";
             card.innerHTML = generateDeedHTML(p);
             
+            if(p.mortgaged) {
+                card.classList.add('mortgaged-style');
+            }
+            
             itemCont.appendChild(card);
 
             // Add Build UI if applicable
-            if(isMonopoly && clientTurnState && p.houses < 5) {
+            if(isMonopoly && clientTurnState && p.houses < 5 && !p.mortgaged) {
                 const btnContainer = document.createElement('div');
                 btnContainer.className = 'build-btn-container';
-                btnContainer.id = `build-ui-${p.originalIndex}`; // Unique ID for updating text
+                btnContainer.id = `build-ui-${p.originalIndex}`; 
 
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-green';
@@ -1489,6 +1552,31 @@
                 itemCont.appendChild(btnContainer);
             }
 
+            // Add Mortgage UI
+            if(clientTurnState && p.houses === 0) {
+                const mContainer = document.createElement('div');
+                mContainer.style.marginTop = '10px';
+                
+                const mBtn = document.createElement('button');
+                mBtn.style.width = '100%';
+                mBtn.style.padding = '10px';
+                
+                if(!p.mortgaged) {
+                    mBtn.className = 'btn btn-red';
+                    mBtn.innerText = `MORTGAGE (+$${p.mortgage})`;
+                    mBtn.onclick = () => {
+                        send('MORTGAGE', { propIdx: p.originalIndex });
+                        closeSwipe({target:{id:'swipe-overlay'}});
+                    };
+                } else {
+                    mBtn.className = 'btn btn-blue';
+                    mBtn.innerText = `MORTGAGED`; // Unmortgage logic later
+                    mBtn.disabled = true;
+                }
+                mContainer.appendChild(mBtn);
+                itemCont.appendChild(mContainer);
+            }
+
             wrap.appendChild(itemCont); 
             cont.appendChild(wrap);
         });
@@ -1496,54 +1584,14 @@
     }
 
     function initBuildSequence(targetProp) {
-        // EVEN BUILD LOGIC
-        // 1. Identify current level of target.
-        // 2. Target level = current + 1.
-        // 3. Scan all other props in group.
-        // 4. Any prop < target level must be built up to target level (or target level -1?). 
-        // Rule: You cannot build a 2nd house on ANY prop until ALL props have 1.
-        // So, if I want Prop A to go from 0 -> 1, check others. If others are 0, fine.
-        // If I want Prop A to go from 1 -> 2, ALL others must be at least 1.
-        // The "Smart" logic: If others are 0, auto-queue them to 1 first.
-
         const group = targetProp.group;
-        const myGroupProps = clientPropState.filter(p => p.group === group && p.owner === myId); // Using client state which has correct houses
+        const myGroupProps = clientPropState.filter(p => p.group === group && p.owner === myId); 
         
-        // Map current levels
-        // We need indices to send to server
         const propIndicesToBuild = [];
         let totalCost = 0;
-
-        const targetLevel = targetProp.houses + 1;
-        
-        // To build ANY property to `targetLevel`, ALL properties in the group must currently be at least `targetLevel - 1`.
-        // If they are not, we must build them up to `targetLevel - 1` first.
-        // AND, to maintain evenness, we might simply just build the ones that are behind.
-        
-        // Simpler implementation of "assume you want to build on those too":
-        // Find the max houses currently in the group.
-        // If targetProp.houses < max, just build targetProp (catch up).
-        // If targetProp is equal to max, we can build it, BUT we must ensure we don't violate rule.
-        // Actually, the prompt implies a "bulk catch up".
-        
-        // Let's iterate. We want to increment targetProp.
-        // Check if any other prop is < targetProp.houses. If so, they must be built first?
-        // No, standard rule: min(houses) across group must be >= targetProp.houses.
-        // If I have [A:1, B:0] and want to build A to 2. Invalid.
-        // I must build B to 1 first.
-        
-        // Proposed Queue:
-        // 1. Add targetProp to queue.
-        // 2. Calculate resulting state: [A:2, B:0].
-        // 3. Check for violation (Max - Min > 1). 2 - 0 = 2. Violation.
-        // 4. Find the straggler (B). Add B to queue.
-        // 5. Result: [A:2, B:1]. Max-Min = 1. Valid.
-        
-        // Recursive simulator?
-        let simState = myGroupProps.map(p => ({ idx: p.originalIndex, houses: p.houses, cost: p.build }));
         let queue = [];
+        let simState = myGroupProps.map(p => ({ idx: p.originalIndex, houses: p.houses, cost: p.build }));
         
-        // Helper to push build
         function pushBuild(idx) {
             let p = simState.find(x => x.idx === idx);
             if(p.houses < 5) {
@@ -1553,10 +1601,10 @@
             }
         }
 
-        // 1. Queue the requested build
+        // 1. Queue requested
         pushBuild(targetProp.originalIndex);
 
-        // 2. Validate and fix loop
+        // 2. Validate Even Build
         let safe = false;
         let loops = 0;
         while(!safe && loops < 20) {
@@ -1567,9 +1615,6 @@
             if (maxH - minH <= 1) {
                 safe = true;
             } else {
-                // Find props that are too low (less than max - 1)
-                // Actually, if Max is 2, Min must be 1.
-                // So any prop < maxH - 1 must be built.
                 simState.forEach(p => {
                     if (p.houses < maxH - 1) {
                         pushBuild(p.idx);
@@ -1578,9 +1623,8 @@
             }
         }
 
-        // UI Feedback
         const uiContainer = document.getElementById(`build-ui-${targetProp.originalIndex}`);
-        uiContainer.innerHTML = ''; // Clear button
+        uiContainer.innerHTML = ''; 
 
         const msg = document.createElement('div');
         msg.className = 'ghost-house-indicator';
@@ -1592,7 +1636,7 @@
         confirmBtn.innerText = `CONFIRM ($${totalCost})`;
         confirmBtn.onclick = () => {
             send('BUILD', { props: queue, cost: totalCost });
-            closeSwipe({target:{id:'swipe-overlay'}}); // Close modal
+            closeSwipe({target:{id:'swipe-overlay'}}); 
         };
 
         uiContainer.appendChild(msg);
@@ -1608,13 +1652,10 @@
     function renderDeed(prop, elementId) {
         const container = document.getElementById('deed-body-container');
         if(container) {
-            container.innerHTML = generateDeedHTML(prop).replace(`<div class="deed-header ${prop.group}">${prop.name}</div>`, ''); // Strip header as it's separate in main view
-            
-            // Fix header separately
+            container.innerHTML = generateDeedHTML(prop).replace(`<div class="deed-header ${prop.group}">${prop.name}</div>`, '');
             const head = document.querySelector(`#${elementId} .deed-header`);
             head.className = `deed-header ${prop.group}`;
             head.innerText = prop.name;
-            
             document.querySelector(`#${elementId} #r-price`).innerText = `$${prop.price}`;
         }
     }
