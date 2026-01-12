@@ -77,6 +77,12 @@
         .pip { background: black; border-radius: 50%; width: 10px; height: 10px; place-self: center; }
         
         .token { position: absolute; width: 3.5%; height: 3.5%; border-radius: 50%; border: 3px solid white; transform: translate(-50%, -50%); transition: top 0.25s linear, left 0.25s linear; z-index: 20; box-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        
+        /* BUILDINGS ON MAP */
+        .building { position: absolute; z-index: 10; border: 1px solid rgba(0,0,0,0.5); box-shadow: 1px 1px 2px black; }
+        .b-house { width: 1.5%; height: 1.5%; background: #2ecc71; }
+        .b-hotel { width: 3%; height: 1.5%; background: #e74c3c; }
+
         .owner-bar { position: absolute; z-index: 5; transition: all 0.3s; }
         .bar-bottom { height: 0.6%; width: 8.1%; bottom: 0; transform: translateX(-50%); }
         .bar-left { height: 8.1%; width: 0.6%; left: 0; top: auto; transform: translateY(-50%); }
@@ -104,6 +110,7 @@
         .rent-highlight { background-color: #f1c40f; font-weight: bold; border-radius: 4px; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
         .btn-action { width: 100%; padding: 20px; font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; border-radius: 10px; border: none; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
         .btn-action:active { transform: translateY(4px); box-shadow: none; }
+        .deed-text-block { margin: 15px 0; font-size: 1rem; line-height: 1.5; }
 
         #client-main-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; position: relative; width: 100%; overflow:hidden; }
         #inventory-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: flex-start; align-content: flex-start; width: 100%; max-width: 400px; padding: 10px; overflow-y: auto; }
@@ -112,18 +119,24 @@
         .card-stack:active { transform: scale(0.95); }
         .card-stack::before { content: ""; position: absolute; top: -3px; left: 3px; width: 100%; height: 100%; background: white; border: 1px solid #999; border-radius: 6px; z-index: -1; }
         .card-stack::after { content: ""; position: absolute; top: -6px; left: 6px; width: 100%; height: 100%; background: white; border: 1px solid #999; border-radius: 6px; z-index: -2; }
+        
+        .monopoly-glow { box-shadow: 0 0 15px gold; border: 2px solid gold; }
+        .monopoly-badge { background: gold; color: black; font-weight: bold; font-size: 0.6rem; text-align: center; padding: 2px; text-transform: uppercase; letter-spacing: 1px; }
+
         .stack-header { height: 25px; border-radius: 5px 5px 0 0; border-bottom: 2px solid black; }
         .stack-body { flex-grow: 1; display: flex; flex-direction: column; padding: 5px; overflow: hidden; }
         .prop-name-mini { font-size: 0.65rem; color: black; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; border-bottom: 1px solid #eee; }
 
         #swipe-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; backdrop-filter: blur(5px); }
         .swipe-header { padding: 20px; display: flex; justify-content: center; align-items: center; color: white; pointer-events: none; }
-        
-        /* UPDATED SWIPE CONTAINER FOR TIGHTER CARD VIEW */
         .swipe-container { flex-grow: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; align-items: center; padding: 0 25px; gap: 15px; }
-        .swipe-item { scroll-snap-align: center; flex: 0 0 auto; width: 300px; display: flex; justify-content: center; pointer-events: auto; }
+        .swipe-item { scroll-snap-align: center; flex: 0 0 auto; width: 300px; display: flex; justify-content: center; pointer-events: auto; position: relative; }
+        
+        .build-btn-container { margin-top: 10px; width: 100%; display: flex; gap: 5px; }
+        .ghost-house-indicator { color: #2ecc71; font-weight: bold; margin-top: 5px; animation: pulse 1s infinite; text-shadow: 0 0 5px black; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
-        /* TRADE UI UPDATES */
+        /* TRADE UI */
         #trade-ui { position: absolute; top:0; left:0; width:100%; height:100%; background:#2c3e50; z-index:400; display:none; flex-direction:column; padding:10px; }
         #trade-player-tabs { display:flex; gap:5px; overflow-x:auto; padding-bottom:10px; border-bottom:1px solid #555; margin-bottom:10px; }
         .trade-tab { padding:10px 15px; background:rgba(0,0,0,0.3); border-radius:20px; white-space:nowrap; cursor:pointer; color:#ccc; border:2px solid transparent; font-weight: bold; }
@@ -303,15 +316,7 @@
         <div id="client-main-area" onclick="closeSwipe(event)">
             <div id="deed-card" class="deed-card" onclick="event.stopPropagation()">
                 <div id="deed-header" class="deed-header">TITLE</div>
-                <div class="deed-body">
-                    <div style="text-align:center; margin-bottom:10px;">Rent <span id="r-base">$0</span></div>
-                    <div class="rent-row"><span>1 House</span> <span id="r-1">$0</span></div>
-                    <div class="rent-row"><span>2 Houses</span> <span id="r-2">$0</span></div>
-                    <div class="rent-row"><span>3 Houses</span> <span id="r-3">$0</span></div>
-                    <div class="rent-row"><span>4 Houses</span> <span id="r-4">$0</span></div>
-                    <div class="rent-row"><span>HOTEL</span> <span id="r-h">$0</span></div>
-                    <div style="margin-top:15px; border-top:1px solid #ccc; padding-top:5px;">Mortgage Value: <span id="r-mort">$0</span><br>Houses cost <span id="r-build">$0</span> each</div>
-                </div>
+                <div id="deed-body-container"></div>
                 <div style="background:black; color:white; text-align:center; padding:5px; font-weight:bold; font-size:1.5rem;">PRICE <span id="r-price">$0</span></div>
             </div>
             <div id="inventory-grid" onclick="event.stopPropagation()"><div style="color:#888;">No properties owned</div></div>
@@ -375,7 +380,7 @@
         { name: "Conn. Ave", type: "prop", group: "bg-lightblue", price: 120, rent: [8,40,100,300,450,600], mortgage: 60, build: 50, owner: null, houses: 0, top: POS[0], left: POS[9], side: 'bottom' },
         { name: "Jail", type: "jail", top: POS[0], left: POS[10], side: 'bottom' },
         { name: "St. Charles", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, top: POS[1], left: POS[10], side: 'left' },
-        { name: "Electric Co", type: "prop", group: "bg-gray", price: 150, rent: [0,0,0,0,0,0], mortgage: 75, build: 0, owner: null, houses: 0, top: POS[2], left: POS[10], side: 'left' },
+        { name: "Electric Co", type: "prop", group: "bg-gray", price: 150, rent: [], mortgage: 75, build: 0, owner: null, houses: 0, top: POS[2], left: POS[10], side: 'left' },
         { name: "States Ave", type: "prop", group: "bg-pink", price: 140, rent: [10,50,150,450,625,750], mortgage: 70, build: 100, owner: null, houses: 0, top: POS[3], left: POS[10], side: 'left' },
         { name: "Virginia Ave", type: "prop", group: "bg-pink", price: 160, rent: [12,60,180,500,700,900], mortgage: 80, build: 100, owner: null, houses: 0, top: POS[4], left: POS[10], side: 'left' },
         { name: "Penn RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[5], left: POS[10], side: 'left' },
@@ -391,7 +396,7 @@
         { name: "B&O RR", type: "prop", group: "bg-black", price: 200, rent: [25,50,100,200,0,0], mortgage: 100, build: 0, owner: null, houses: 0, top: POS[10], left: POS[5], side: 'top' },
         { name: "Atlantic", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, top: POS[10], left: POS[4], side: 'top' },
         { name: "Ventnor", type: "prop", group: "bg-yellow", price: 260, rent: [22,110,330,800,975,1150], mortgage: 130, build: 150, owner: null, houses: 0, top: POS[10], left: POS[3], side: 'top' },
-        { name: "Water Works", type: "prop", group: "bg-gray", price: 150, rent: [0,0,0,0,0,0], mortgage: 75, build: 0, owner: null, houses: 0, top: POS[10], left: POS[2], side: 'top' },
+        { name: "Water Works", type: "prop", group: "bg-gray", price: 150, rent: [], mortgage: 75, build: 0, owner: null, houses: 0, top: POS[10], left: POS[2], side: 'top' },
         { name: "Marvin G.", type: "prop", group: "bg-yellow", price: 280, rent: [24,120,360,850,1025,1200], mortgage: 140, build: 150, owner: null, houses: 0, top: POS[10], left: POS[1], side: 'top' },
         { name: "Go To Jail", type: "gotojail", top: POS[10], left: POS[0], side: 'top' },
         { name: "Pacific", type: "prop", group: "bg-green", price: 300, rent: [26,130,390,900,1100,1275], mortgage: 150, build: 200, owner: null, houses: 0, top: POS[9], left: POS[0], side: 'right' },
@@ -426,7 +431,7 @@
         tradeNotification: null,
         gameStarted: false,
         movedByCard: false,
-        waitingForReRoll: false // ADDED: Flag to track doubles turn
+        waitingForReRoll: false 
     };
 
     function switchScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
@@ -453,9 +458,7 @@
 
         // Trade response AI
         if(gameState.activeTrade && gameState.activeTrade.to === pId) {
-            setTimeout(() => {
-                handleHostAction(pId, {type: 'TRADE_ACCEPT'});
-            }, 2000);
+            processAITradeResponse(pId);
             return;
         }
 
@@ -478,13 +481,56 @@
         }, 1500);
     }
 
+    // --- NEW SMART AI TRADE LOGIC ---
     function processAITradeResponse(targetId) {
-        const p = gameState.players[targetId];
-        if(!p || !p.isAI) return;
+        const ai = gameState.players[targetId];
+        if(!ai || !ai.isAI) return;
+
         setTimeout(() => {
             const trade = gameState.activeTrade;
-            if (trade && trade.to === targetId) handleHostAction(targetId, {type: 'TRADE_ACCEPT'});
+            if (trade && trade.to === targetId) {
+                if (evaluateTrade(trade, ai)) {
+                     handleHostAction(targetId, {type: 'TRADE_ACCEPT'});
+                } else {
+                     handleHostAction(targetId, {type: 'TRADE_DECLINE'});
+                }
+            }
         }, 2000); 
+    }
+
+    function evaluateTrade(trade, ai) {
+        const senderId = trade.from;
+        if (ai.money < trade.req.money) return false;
+
+        let valueIn = trade.offer.money;
+        let valueOut = trade.req.money;
+        trade.offer.props.forEach(idx => { valueIn += getPropStrategicValue(idx, ai.id, senderId); });
+        trade.req.props.forEach(idx => { valueOut += getPropStrategicValue(idx, ai.id, senderId, true); });
+
+        return valueIn >= (valueOut * 1.1);
+    }
+
+    function getPropStrategicValue(idx, aiId, opponentId, isOutgoing = false) {
+        const prop = boardMap[idx];
+        const group = prop.group;
+        let val = prop.price;
+        if (!group) return val; 
+
+        const totalInGroup = boardMap.filter(p => p.group === group).length;
+        const aiOwned = boardMap.filter(p => p.group === group && p.owner === aiId).length;
+        const oppOwned = boardMap.filter(p => p.group === group && p.owner === opponentId).length;
+
+        if (!isOutgoing) {
+            if (aiOwned === totalInGroup - 1) val *= 3.0;
+            else if (aiOwned === 0) val *= 1.0; 
+            else val *= 1.5; 
+        } 
+        else {
+            if (aiOwned === totalInGroup) val *= 5.0; 
+            else if (aiOwned > 1) val *= 1.5;
+            if (oppOwned === totalInGroup - 1) val *= 4.0; 
+        }
+        return val;
     }
 
     function initHost() {
@@ -588,16 +634,38 @@
             broadcastState();
             await new Promise(r => setTimeout(r, 250));
         }
-        handleLanding(p);
+        // Pass the dice roll (absolute value of steps) to handleLanding
+        handleLanding(p, Math.abs(steps));
     }
 
     function handleHostAction(pId, action) {
         if(action.type === 'PING') return;
-        // Strict Turn Check for Game Actions (except join/trade)
+        // Strict Turn Check for Game Actions (except join/trade/build)
         if(!gameState.gameStarted && action.type !== 'JOIN') return;
 
+        // Build can happen anytime if it's your turn, but usually restricted to rolling/idle
         if(pId !== gameState.turnIndex && action.type !== 'TRADE_ACCEPT' && action.type !== 'TRADE_DECLINE' && action.type !== 'TRADE_OFFER') return;
         const p = gameState.players[pId];
+
+        // --- NEW: BUILD HANDLER ---
+        if(action.type === 'BUILD') {
+            const cost = action.cost;
+            const propsToBuild = action.props; // Array of indices to increment
+
+            if(p.money >= cost) {
+                p.money -= cost;
+                triggerMoneyAnim(p.id, -cost);
+                propsToBuild.forEach(idx => {
+                    if(boardMap[idx].houses < 5) {
+                        boardMap[idx].houses++;
+                    }
+                });
+                log(`${p.name} built houses/hotels.`);
+                broadcastState();
+                // If it was smart AI turn logic, we might need a pause, but AI building not implemented yet
+            }
+            return;
+        }
 
         if(action.type === 'TRADE_OFFER') {
             gameState.activeTrade = { from: pId, to: parseInt(action.target), offer: action.offer, req: action.req };
@@ -621,8 +689,8 @@
             pFrom.money = pFrom.money - trade.offer.money + trade.req.money;
             pTo.money = pTo.money - trade.req.money + trade.offer.money;
 
-            trade.offer.props.forEach(idx => { boardMap[idx].owner = trade.to; });
-            trade.req.props.forEach(idx => { boardMap[idx].owner = trade.from; });
+            trade.offer.props.forEach(idx => { boardMap[idx].owner = trade.to; boardMap[idx].houses = 0; }); // Reset houses on trade rule
+            trade.req.props.forEach(idx => { boardMap[idx].owner = trade.from; boardMap[idx].houses = 0; });
 
             log("Trade Completed!");
             
@@ -832,7 +900,7 @@
         if(done) { checkNextPhase(); }
     }
 
-    function handleLanding(p) {
+    function handleLanding(p, diceTotal = 7) {
         const sq = boardMap[p.position];
         log(`Landed on ${sq.name}`);
         if(sq.type === 'prop') {
@@ -847,7 +915,27 @@
                 if(gameState.players[sq.owner].jailed && !gameState.rules.jailRent) {
                     log("Owner is jailed. No rent.");
                 } else {
-                    const rent = sq.rent[sq.houses];
+                    let rent = 0;
+                    if(sq.group === 'bg-gray') { // Utilities
+                        const ownerProps = boardMap.filter(s => s.group === 'bg-gray' && s.owner === sq.owner).length;
+                        rent = (ownerProps === 2 ? 10 : 4) * diceTotal;
+                        log(`Utility Rent: $${rent} (${ownerProps === 2 ? '10x' : '4x'} roll)`);
+                    } else if (sq.group === 'bg-black') { // Railroads
+                        const ownerProps = boardMap.filter(s => s.group === 'bg-black' && s.owner === sq.owner).length;
+                        rent = sq.rent[ownerProps - 1];
+                    } else { // Normal Property
+                        rent = sq.rent[sq.houses];
+                        if(sq.houses === 0) {
+                            // Check if full set owned for 2x rent
+                            const groupProps = boardMap.filter(s => s.group === sq.group);
+                            const isMonopoly = groupProps.every(s => s.owner === sq.owner);
+                            if(isMonopoly) {
+                                rent *= 2;
+                                log("Monopoly! Rent doubled.");
+                            }
+                        }
+                    }
+                    
                     p.money -= rent;
                     gameState.players[sq.owner].money += rent;
                     triggerMoneyAnim(p.id, -rent);
@@ -917,6 +1005,50 @@
         document.getElementById('board-wrapper').appendChild(m);
     }
     function updatePot() { document.getElementById('pot-amount').innerText = gameState.potMoney; }
+    
+    // --- UPDATED: RENDER BUILDINGS ---
+    function renderBuildings() {
+        document.querySelectorAll('.building').forEach(el => el.remove());
+        boardMap.forEach((sq, idx) => {
+            if(sq.houses > 0) {
+                const count = sq.houses;
+                const isHotel = count === 5;
+                const bType = isHotel ? 'b-hotel' : 'b-house';
+                
+                // Determine base offset based on side
+                let baseTop = sq.top;
+                let baseLeft = sq.left;
+                
+                // Slightly offset buildings so they don't cover player tokens or owner bars completely
+                // Simple logic: Place them "inside" the board relative to the slot
+                if(sq.side === 'bottom') baseTop -= 5;
+                if(sq.side === 'top') baseTop += 5;
+                if(sq.side === 'left') baseLeft += 5;
+                if(sq.side === 'right') baseLeft -= 5;
+
+                if(isHotel) {
+                    const h = document.createElement('div');
+                    h.className = `building ${bType}`;
+                    h.style.top = baseTop + '%';
+                    h.style.left = baseLeft + '%';
+                    document.getElementById('board-wrapper').appendChild(h);
+                } else {
+                    // Render up to 4 houses. Spacing them out slightly.
+                    for(let i=0; i<count; i++) {
+                         const h = document.createElement('div');
+                        h.className = `building ${bType}`;
+                        // Tiny offsets for multiple houses
+                        let offX = (i%2) * 2 - 1; 
+                        let offY = Math.floor(i/2) * 2 - 1;
+                        h.style.top = (baseTop + offY) + '%';
+                        h.style.left = (baseLeft + offX) + '%';
+                        document.getElementById('board-wrapper').appendChild(h);
+                    }
+                }
+            }
+        });
+    }
+
     function renderGameList() {
         const el = document.getElementById('game-player-list');
         el.innerHTML = gameState.players.map((p,i) => {
@@ -938,6 +1070,7 @@
     function broadcastState(msg) {
         if(msg) log(msg);
         renderGameList();
+        renderBuildings();
         const propData = boardMap.map(s => ({owner: s.owner, houses: s.houses}));
         const payload = {
             type: 'STATE',
@@ -1252,36 +1385,50 @@
         for(const group of sortedKeys) {
             const props = groups[group];
             const stack = document.createElement('div');
-            stack.className = 'card-stack';
+            
+            // Check Monopoly
+            const totalInGroup = boardMap.filter(x => x.group === group).length;
+            const isMonopoly = props.length === totalInGroup && totalInGroup > 0 && group !== 'bg-black' && group !== 'bg-gray';
+
+            stack.className = isMonopoly ? 'card-stack monopoly-glow' : 'card-stack';
             stack.onclick = () => openSwipeModal(props);
+            
             const header = document.createElement('div');
             header.className = `stack-header ${group}`;
+            
+            if(isMonopoly) {
+                const badge = document.createElement('div');
+                badge.className = 'monopoly-badge';
+                badge.innerText = "MONOPOLY";
+                stack.appendChild(badge);
+            }
+
             const body = document.createElement('div');
             body.className = 'stack-body';
             props.forEach(p => {
                 const n = document.createElement('div');
                 n.className = 'prop-name-mini';
-                n.innerText = p.name;
+                n.innerText = p.name + (p.houses > 0 ? (p.houses===5 ? ' [H]' : ` [${p.houses}]`) : '');
                 body.appendChild(n);
             });
             stack.appendChild(header); stack.appendChild(body); container.appendChild(stack);
         }
     }
 
-    function openSwipeModal(props) {
-        const cont = document.getElementById('swipe-container');
-        cont.innerHTML = '';
-        props.forEach(p => {
-            const wrap = document.createElement('div');
-            wrap.className = 'swipe-item';
-            wrap.onclick = (e) => closeSwipe(e); 
-            const card = document.createElement('div');
-            card.style.cssText = "background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;";
-            card.onclick = (e) => e.stopPropagation(); 
-            
-            const houseCount = p.houses || 0;
-            const hl = (idx) => (houseCount === idx ? 'rent-highlight' : '');
-            let html = `<div class="deed-header ${p.group}">${p.name}</div><div class="deed-body">`;
+    function generateDeedHTML(p) {
+        const houseCount = p.houses || 0;
+        const hl = (idx) => (houseCount === idx ? 'rent-highlight' : '');
+        let html = `<div class="deed-header ${p.group}">${p.name}</div><div class="deed-body">`;
+        
+        if (p.group === 'bg-gray') { // Utilities
+            html += `<div class="deed-text-block">If one Utility is owned,<br>rent is 4x amount shown on dice.</div>`;
+            html += `<div class="deed-text-block">If both Utilities are owned,<br>rent is 10x amount shown on dice.</div>`;
+        } else if (p.group === 'bg-black') { // Railroads
+             html += `<div class="rent-row"><span>Rent</span><span>$25</span></div>`;
+             html += `<div class="rent-row"><span>If 2 R.R.'s are owned</span><span>$50</span></div>`;
+             html += `<div class="rent-row"><span>If 3 R.R.'s are owned</span><span>$100</span></div>`;
+             html += `<div class="rent-row"><span>If 4 R.R.'s are owned</span><span>$200</span></div>`;
+        } else {
             let baseStyle = houseCount === 0 ? 'background-color:#f1c40f; font-weight:bold; border-radius:4px;' : '';
             html += `<div style="text-align:center; margin-bottom:10px; ${baseStyle}">Rent $${p.rent[0]}</div>`;
             html += `<div class="rent-row ${hl(1)}"><span>1 House</span><span>$${p.rent[1]}</span></div>`;
@@ -1289,11 +1436,167 @@
             html += `<div class="rent-row ${hl(3)}"><span>3 Houses</span><span>$${p.rent[3]}</span></div>`;
             html += `<div class="rent-row ${hl(4)}"><span>4 Houses</span><span>$${p.rent[4]}</span></div>`;
             html += `<div class="rent-row ${hl(5)}"><span>HOTEL</span><span>$${p.rent[5]}</span></div>`;
-            html += `<div style="margin-top:10px; border-top:1px solid #ccc; padding-top:5px; text-align:center;">Mortgage: $${p.mortgage}<br>Houses cost $${p.build}</div></div>`;
-            card.innerHTML = html;
-            wrap.appendChild(card); cont.appendChild(wrap);
+        }
+        
+        html += `<div style="margin-top:10px; border-top:1px solid #ccc; padding-top:5px; text-align:center;">Mortgage: $${p.mortgage}<br>Houses cost $${p.build}</div></div>`;
+        return html;
+    }
+
+    // --- BUILD LOGIC ---
+    let pendingBuildCost = 0;
+    let pendingBuildProps = [];
+
+    function openSwipeModal(props) {
+        const cont = document.getElementById('swipe-container');
+        cont.innerHTML = '';
+        
+        const group = props[0].group;
+        // Check if monopoly for building button
+        const totalInGroup = boardMap.filter(x => x.group === group).length;
+        const isMonopoly = props.length === totalInGroup && totalInGroup > 0 && group !== 'bg-black' && group !== 'bg-gray';
+
+        props.forEach(p => {
+            const wrap = document.createElement('div');
+            wrap.className = 'swipe-item';
+            wrap.onclick = (e) => closeSwipe(e); 
+            
+            // Container for card + build actions
+            const itemCont = document.createElement('div');
+            itemCont.style.display = "flex";
+            itemCont.style.flexDirection = "column";
+            itemCont.onclick = (e) => e.stopPropagation();
+
+            const card = document.createElement('div');
+            card.style.cssText = "background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;";
+            card.innerHTML = generateDeedHTML(p);
+            
+            itemCont.appendChild(card);
+
+            // Add Build UI if applicable
+            if(isMonopoly && clientTurnState && p.houses < 5) {
+                const btnContainer = document.createElement('div');
+                btnContainer.className = 'build-btn-container';
+                btnContainer.id = `build-ui-${p.originalIndex}`; // Unique ID for updating text
+
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-green';
+                btn.style.width = '100%';
+                btn.style.padding = '10px';
+                btn.innerText = `Build (+1) $${p.build}`;
+                btn.onclick = () => initBuildSequence(p);
+                
+                btnContainer.appendChild(btn);
+                itemCont.appendChild(btnContainer);
+            }
+
+            wrap.appendChild(itemCont); 
+            cont.appendChild(wrap);
         });
         document.getElementById('swipe-overlay').style.display = 'flex';
+    }
+
+    function initBuildSequence(targetProp) {
+        // EVEN BUILD LOGIC
+        // 1. Identify current level of target.
+        // 2. Target level = current + 1.
+        // 3. Scan all other props in group.
+        // 4. Any prop < target level must be built up to target level (or target level -1?). 
+        // Rule: You cannot build a 2nd house on ANY prop until ALL props have 1.
+        // So, if I want Prop A to go from 0 -> 1, check others. If others are 0, fine.
+        // If I want Prop A to go from 1 -> 2, ALL others must be at least 1.
+        // The "Smart" logic: If others are 0, auto-queue them to 1 first.
+
+        const group = targetProp.group;
+        const myGroupProps = clientPropState.filter(p => p.group === group && p.owner === myId); // Using client state which has correct houses
+        
+        // Map current levels
+        // We need indices to send to server
+        const propIndicesToBuild = [];
+        let totalCost = 0;
+
+        const targetLevel = targetProp.houses + 1;
+        
+        // To build ANY property to `targetLevel`, ALL properties in the group must currently be at least `targetLevel - 1`.
+        // If they are not, we must build them up to `targetLevel - 1` first.
+        // AND, to maintain evenness, we might simply just build the ones that are behind.
+        
+        // Simpler implementation of "assume you want to build on those too":
+        // Find the max houses currently in the group.
+        // If targetProp.houses < max, just build targetProp (catch up).
+        // If targetProp is equal to max, we can build it, BUT we must ensure we don't violate rule.
+        // Actually, the prompt implies a "bulk catch up".
+        
+        // Let's iterate. We want to increment targetProp.
+        // Check if any other prop is < targetProp.houses. If so, they must be built first?
+        // No, standard rule: min(houses) across group must be >= targetProp.houses.
+        // If I have [A:1, B:0] and want to build A to 2. Invalid.
+        // I must build B to 1 first.
+        
+        // Proposed Queue:
+        // 1. Add targetProp to queue.
+        // 2. Calculate resulting state: [A:2, B:0].
+        // 3. Check for violation (Max - Min > 1). 2 - 0 = 2. Violation.
+        // 4. Find the straggler (B). Add B to queue.
+        // 5. Result: [A:2, B:1]. Max-Min = 1. Valid.
+        
+        // Recursive simulator?
+        let simState = myGroupProps.map(p => ({ idx: p.originalIndex, houses: p.houses, cost: p.build }));
+        let queue = [];
+        
+        // Helper to push build
+        function pushBuild(idx) {
+            let p = simState.find(x => x.idx === idx);
+            if(p.houses < 5) {
+                p.houses++;
+                queue.push(idx);
+                totalCost += p.cost;
+            }
+        }
+
+        // 1. Queue the requested build
+        pushBuild(targetProp.originalIndex);
+
+        // 2. Validate and fix loop
+        let safe = false;
+        let loops = 0;
+        while(!safe && loops < 20) {
+            loops++;
+            let minH = Math.min(...simState.map(x => x.houses));
+            let maxH = Math.max(...simState.map(x => x.houses));
+            
+            if (maxH - minH <= 1) {
+                safe = true;
+            } else {
+                // Find props that are too low (less than max - 1)
+                // Actually, if Max is 2, Min must be 1.
+                // So any prop < maxH - 1 must be built.
+                simState.forEach(p => {
+                    if (p.houses < maxH - 1) {
+                        pushBuild(p.idx);
+                    }
+                });
+            }
+        }
+
+        // UI Feedback
+        const uiContainer = document.getElementById(`build-ui-${targetProp.originalIndex}`);
+        uiContainer.innerHTML = ''; // Clear button
+
+        const msg = document.createElement('div');
+        msg.className = 'ghost-house-indicator';
+        msg.innerText = `Pending: ${queue.length} houses/hotels across group`;
+        
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = 'btn btn-red';
+        confirmBtn.style.width = '100%';
+        confirmBtn.innerText = `CONFIRM ($${totalCost})`;
+        confirmBtn.onclick = () => {
+            send('BUILD', { props: queue, cost: totalCost });
+            closeSwipe({target:{id:'swipe-overlay'}}); // Close modal
+        };
+
+        uiContainer.appendChild(msg);
+        uiContainer.appendChild(confirmBtn);
     }
 
     window.closeSwipe = function(e) {
@@ -1303,18 +1606,15 @@
     }
 
     function renderDeed(prop, elementId) {
-        const head = document.querySelector(`#${elementId} .deed-header`);
-        if(head) {
+        const container = document.getElementById('deed-body-container');
+        if(container) {
+            container.innerHTML = generateDeedHTML(prop).replace(`<div class="deed-header ${prop.group}">${prop.name}</div>`, ''); // Strip header as it's separate in main view
+            
+            // Fix header separately
+            const head = document.querySelector(`#${elementId} .deed-header`);
             head.className = `deed-header ${prop.group}`;
             head.innerText = prop.name;
-            document.querySelector(`#${elementId} #r-base`).innerText = `$${prop.rent[0]}`;
-            document.querySelector(`#${elementId} #r-1`).innerText = `$${prop.rent[1]}`;
-            document.querySelector(`#${elementId} #r-2`).innerText = `$${prop.rent[2]}`;
-            document.querySelector(`#${elementId} #r-3`).innerText = `$${prop.rent[3]}`;
-            document.querySelector(`#${elementId} #r-4`).innerText = `$${prop.rent[4]}`;
-            document.querySelector(`#${elementId} #r-h`).innerText = `$${prop.rent[5]}`;
-            document.querySelector(`#${elementId} #r-mort`).innerText = `$${prop.mortgage}`;
-            document.querySelector(`#${elementId} #r-build`).innerText = `$${prop.build}`;
+            
             document.querySelector(`#${elementId} #r-price`).innerText = `$${prop.price}`;
         }
     }
