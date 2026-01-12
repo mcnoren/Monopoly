@@ -425,7 +425,8 @@
         activeTrade: null,
         tradeNotification: null,
         gameStarted: false,
-        movedByCard: false 
+        movedByCard: false,
+        waitingForReRoll: false // ADDED: Flag to track doubles turn
     };
 
     function switchScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
@@ -439,7 +440,7 @@
     function addAI() {
         if (gameState.players.length >= 4) return;
         const pId = gameState.players.length;
-        const newPlayer = { id: pId, name: `Bot ${pId + 1}`, colorClass: ["p-red", "p-blue", "p-green", "p-yellow"][pId], money: 1500, position: 0, jailed: false, jailTurns: 0, getOutCard: 0, isAI: true };
+        const newPlayer = { id: pId, name: `Bot ${pId + 1}`, colorClass: ["p-red", "p-blue", "p-green", "p-yellow"][pId], money: 1500, position: 0, jailed: false, jailTurns: 0, getOutCard: 0, doublesStreak: 0, isAI: true };
         gameState.players.push(newPlayer);
         renderLobbyList();
         broadcastState();
@@ -502,7 +503,7 @@
             if(data.type === 'JOIN') {
                 const pId = gameState.players.length;
                 if(pId >= 4) { conn.send({type:'ERROR', msg:'Lobby Full'}); return; }
-                const newPlayer = { id: pId, name: data.name || `Player ${pId+1}`, colorClass: ["p-red","p-blue","p-green","p-yellow"][pId], money: 1500, position: 0, jailed: false, jailTurns: 0, getOutCard: 0 };
+                const newPlayer = { id: pId, name: data.name || `Player ${pId+1}`, colorClass: ["p-red","p-blue","p-green","p-yellow"][pId], money: 1500, position: 0, jailed: false, jailTurns: 0, getOutCard: 0, doublesStreak: 0 };
                 gameState.players.push(newPlayer);
                 connections[pId] = conn;
                 renderLobbyList();
@@ -678,7 +679,31 @@
             showDiceResult(d1, d2);
 
             setTimeout(() => {
+                // Check for Doubles
+                if(d1 === d2 && !p.jailed) {
+                    p.doublesStreak++;
+                    if(p.doublesStreak === 3) {
+                        log("3 Doubles in a row! Go to Jail.");
+                        p.doublesStreak = 0;
+                        gameState.waitingForReRoll = false;
+                        p.position = 10; 
+                        p.jailed = true; 
+                        p.jailTurns = 0; 
+                        updateToken(p);
+                        gameState.turnPhase = 'IDLE';
+                        broadcastState();
+                        processAITurn();
+                        return;
+                    }
+                    gameState.waitingForReRoll = true;
+                    log("Doubles! Roll again.");
+                } else {
+                    p.doublesStreak = 0;
+                    gameState.waitingForReRoll = false;
+                }
+
                 if(d1===1 && d2===1 && gameState.rules.snake) { p.money += 500; triggerMoneyAnim(p.id, 500); log("Snake Eyes! +$500 Bonus"); }
+                
                 if(p.jailed) {
                     if(d1===d2) { p.jailed = false; p.jailTurns = 0; log("Doubles! Released."); movePlayerSequence(p, total); } 
                     else {
@@ -711,15 +736,11 @@
                 addOwnerBar(gameState.pendingProp, p.colorClass);
                 log(`Bought ${sq.name}`);
             }
-            gameState.turnPhase = 'IDLE';
-            broadcastState();
-            processAITurn();
+            checkNextPhase();
         }
         else if(action.type === 'PASS') {
             log("Passed property.");
-            gameState.turnPhase = 'IDLE';
-            broadcastState();
-            processAITurn();
+            checkNextPhase();
         }
         else if(action.type === 'OK') {
             closeOverlay();
@@ -731,19 +752,29 @@
                 gameState.movedByCard = false;
                 handleLanding(p);
             } else {
-                gameState.turnPhase = 'IDLE';
-                broadcastState();
-                processAITurn();
+                checkNextPhase();
             }
         }
         else if(action.type === 'END_TURN') {
             gameState.turnPhase = 'ROLLING';
             gameState.pendingProp = null;
             gameState.activeCard = null;
+            gameState.waitingForReRoll = false;
+            p.doublesStreak = 0; // Reset just in case
             gameState.turnIndex = (gameState.turnIndex + 1) % gameState.players.length;
             broadcastState();
             processAITurn();
         }
+    }
+
+    function checkNextPhase() {
+        if(gameState.waitingForReRoll) {
+            gameState.turnPhase = 'ROLLING';
+        } else {
+            gameState.turnPhase = 'IDLE';
+        }
+        broadcastState();
+        processAITurn();
     }
 
     function executeCardAction(p, card) {
@@ -756,7 +787,12 @@
         } 
         else if(card.action === 'money') { p.money += card.amount; triggerMoneyAnim(p.id, card.amount); done = true; }
         else if(card.action === 'back_3') { gameState.movedByCard = true; movePlayerSequence(p, -3); }
-        else if(card.action === 'gotojail') { p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); done = true; }
+        else if(card.action === 'gotojail') { 
+            p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); 
+            log("Sent to Jail!"); 
+            gameState.waitingForReRoll = false; // Lose turn even if it was doubles
+            done = true; 
+        }
         else if(card.action === 'nearest_util') {
             let pos = p.position; let target = 12;
             if (pos >= 12 && pos < 28) target = 28; else if (pos >= 28) target = 12;
@@ -793,7 +829,7 @@
         }
         else if(card.action === 'keep_jail') { p.getOutCard++; done = true; }
         
-        if(done) { gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
+        if(done) { checkNextPhase(); }
     }
 
     function handleLanding(p) {
@@ -806,7 +842,7 @@
                     gameState.pendingProp = p.position;
                     broadcastState();
                     processAITurn();
-                } else { log("Can't afford property."); gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
+                } else { log("Can't afford property."); checkNextPhase(); }
             } else if (sq.owner !== p.id) {
                 if(gameState.players[sq.owner].jailed && !gameState.rules.jailRent) {
                     log("Owner is jailed. No rent.");
@@ -818,11 +854,11 @@
                     triggerMoneyAnim(sq.owner, rent);
                     log(`Paid $${rent} rent.`);
                 }
-                gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn();
-            } else { gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
+                checkNextPhase();
+            } else { checkNextPhase(); }
         }
         else if(sq.type === 'chance' || sq.type === 'chest') { drawCard(p, sq.type); }
-        else if(sq.type === 'tax') { payTax(p, sq.cost); gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
+        else if(sq.type === 'tax') { payTax(p, sq.cost); checkNextPhase(); }
         else if(sq.type === 'parking') {
             if(gameState.rules.pot && gameState.potMoney > 0) {
                 p.money += gameState.potMoney;
@@ -831,12 +867,15 @@
                 gameState.potMoney = 0;
                 updatePot();
             }
-            gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn();
+            checkNextPhase();
         }
         else if(sq.type === 'gotojail') {
-            p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn();
+            p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); 
+            log("Sent to Jail!"); 
+            gameState.waitingForReRoll = false; // Turn ends on Jail
+            checkNextPhase();
         }
-        else { gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn(); }
+        else { checkNextPhase(); }
     }
 
     function payTax(p, amt) {
