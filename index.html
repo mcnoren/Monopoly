@@ -1075,7 +1075,7 @@
                 const tab = document.createElement('div');
                 tab.className = 'trade-tab';
                 tab.innerText = p.name;
-                tab.style.backgroundColor = getColorHex(p.colorClass); // FIX 3: COLOR TABS
+                tab.style.backgroundColor = getColorHex(p.colorClass);
                 tab.onclick = () => {
                     document.querySelectorAll('.trade-tab').forEach(t => t.style.border = '2px solid transparent');
                     tab.style.border = '2px solid white';
@@ -1086,41 +1086,39 @@
         });
         
         if(targetId === null && firstAvailable !== null) targetId = firstAvailable;
+        
+        // Auto-select logic
         if(targetId !== null) {
-            const initialTab = tabs.querySelector(`[data-id="${targetId}"]`);
-            // Highlight initial tab
-            // But we didn't add data-id attr above. Add it now?
-            // Actually manual click sim is fine or just call showTradeBuilder
-            // Let's just fix the border for the first one manually
-             // The logic above sets click handler. 
-            // We just need to trigger the click on the correct tab element
-            // Simple way:
+            // Find the tab we just created and "click" it
             const allTabs = tabs.querySelectorAll('.trade-tab');
-            // find index
-             let targetIndex = -1;
-             gameState.players.forEach((p, idx) => { if(p.id === targetId) targetIndex = idx; });
-             // This is tricky because `gameState.players` contains ME. `tabs` does not.
-             // Just click the first one if target is null, or find by text.
-             if(allTabs.length > 0) allTabs[0].click();
+            // We need to match the correct tab index. Since we skipped 'myId', the index logic is tricky.
+            // Easier: just click the first tab available if targetId was null, or match by text/color?
+            // Simplest fix: Just call the builder directly for the target.
+            showTradeBuilder(targetId);
+            
+            // Highlight the correct tab visually
+            // (Looping again is inefficient but reliable for this small list)
+            let tabIndex = 0;
+            gameState.players.forEach(p => {
+                 if (p.id !== myId) {
+                     if (p.id === targetId && allTabs[tabIndex]) {
+                         allTabs[tabIndex].style.border = '2px solid white';
+                     }
+                     tabIndex++;
+                 }
+            });
         } 
     }
     
-    // Close Trade Logic
     function closeTrade() {
         document.getElementById('trade-ui').style.display = 'none';
-        document.getElementById('trade-step-2').style.display = 'none';
-        document.getElementById('trade-step-1').style.display = 'block'; // Reset
+        // Removed step-toggle logic causing the crash
     }
-
-    // Dismissal
-    document.getElementById('trade-ui').onclick = (e) => {
-        if(e.target.id === 'trade-ui') closeTrade();
-    };
 
     function showTradeBuilder(tid) {
         tradeTarget = tid;
-        document.getElementById('trade-step-1').style.display = 'none'; 
-        document.getElementById('trade-step-2').style.display = 'flex';
+        // Removed step-toggle logic causing the crash
+        
         // Update Balances
         const me = gameState.players.find(p => p.id === myId);
         const partner = gameState.players.find(p => p.id === tid);
@@ -1136,8 +1134,6 @@
         el.innerHTML = '';
         
         const owned = [];
-        // Fix: Use boardMap directly but check ownership from clientPropState which is synced from host
-        // clientPropState is array [{owner: x, houses: y}, ...] corresponding to boardMap indices
         clientPropState.forEach((pState, idx) => { 
             if(pState.owner === pid) {
                 owned.push({...boardMap[idx], idx: idx}); 
@@ -1150,7 +1146,11 @@
         owned.forEach(p => { if(!groups[p.group]) groups[p.group] = []; groups[p.group].push(p); });
 
         const order = ['bg-brown','bg-lightblue','bg-pink','bg-orange','bg-red','bg-yellow','bg-green','bg-darkblue','bg-gray','bg-black']; 
-        const sortedKeys = Object.keys(groups).sort((a,b) => order.indexOf(a) - order.indexOf(b));
+        const sortedKeys = Object.keys(groups).sort((a,b) => {
+             let ia = order.indexOf(a); if(ia === -1) ia = 99;
+             let ib = order.indexOf(b); if(ib === -1) ib = 99;
+             return ia - ib;
+        });
 
         sortedKeys.forEach(grp => {
             const header = document.createElement('div');
@@ -1162,8 +1162,7 @@
             groups[grp].forEach(p => {
                 const row = document.createElement('div');
                 row.className = 'trade-item';
-                row.style.borderLeft = `5px solid var(--${grp.replace('bg-','')})`; // CSS var trick or inline color map
-                // Just rely on group header color.
+                // row.style.borderLeft = ... (Removed redundant style, class handles it)
                 row.innerHTML = `<span class="trade-prop-name ${grp}">${p.name}</span><input type="checkbox" class="trade-check" data-idx="${p.idx}">`;
                 el.appendChild(row);
             });
