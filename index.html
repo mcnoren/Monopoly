@@ -119,21 +119,17 @@
 
         /* TRADE UI UPDATES */
         #trade-ui { position: absolute; top:0; left:0; width:100%; height:100%; background:#2c3e50; z-index:400; display:none; flex-direction:column; padding:10px; }
-        
-        /* TRADE PLAYER TABS */
         #trade-player-tabs { display:flex; gap:5px; overflow-x:auto; padding-bottom:10px; border-bottom:1px solid #555; margin-bottom:10px; }
-        .trade-tab { padding:10px 15px; background:rgba(0,0,0,0.3); border-radius:20px; white-space:nowrap; cursor:pointer; color:#ccc; border:1px solid transparent; }
-        .trade-tab.active { background:var(--primary); color:white; border-color:white; font-weight:bold; }
+        .trade-tab { padding:10px 15px; background:rgba(0,0,0,0.3); border-radius:20px; white-space:nowrap; cursor:pointer; color:#ccc; border:2px solid transparent; font-weight: bold; }
+        .trade-tab.active { border-color:white; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
 
         .trade-section { background: rgba(0,0,0,0.3); padding: 5px; border-radius: 8px; margin-bottom: 5px; display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto; }
-        
-        /* GROUPED TRADE LIST ITEMS */
         .trade-group-header { padding:5px; font-size:0.8rem; font-weight:bold; color:white; text-transform:uppercase; margin-top:5px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;}
         .trade-group-header span { font-size:0.7rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; }
         .trade-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; margin-left:5px; }
         .trade-check { transform: scale(1.3); }
 
-        #trade-result-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(46, 204, 113, 0.95); z-index:700; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; animation:popIn 0.3s; }
+        .tr-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(46, 204, 113, 0.95); z-index:700; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; animation:popIn 0.3s; }
         .tr-box { background:white; color:black; padding:30px; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.5); width:90%; max-width:400px; }
         .tr-title { font-size: 2rem; font-weight: 900; color:#27ae60; margin-bottom:10px; }
         .tr-detail { font-size:1.1rem; margin:10px 0; border-bottom:1px solid #eee; padding-bottom:5px; }
@@ -141,18 +137,10 @@
         #error-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; z-index: 1000; font-weight: bold; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
         .p-red { background: #e74c3c; } .p-blue { background: #3498db; } .p-green { background: #2ecc71; } .p-yellow { background: #f1c40f; }
-        
-        /* Board Colors */
-        .bg-brown { background: #8b4513; color: white; } 
-        .bg-lightblue { background: #87ceeb; color: black; } 
-        .bg-pink { background: #ff69b4; color: black; }
-        .bg-orange { background: #ffa500; color: black; } 
-        .bg-red { background: #ff0000; color: white; } 
-        .bg-yellow { background: #ffff00; color: black; }
-        .bg-green { background: #008000; color: white; } 
-        .bg-darkblue { background: #00008b; color: white; }
-        .bg-black { background: #000; color: white; } 
-        .bg-gray { background: #95a5a6; color: black; }
+        .bg-brown { background: #8b4513; color: white; } .bg-lightblue { background: #87ceeb; color: black; } .bg-pink { background: #ff69b4; color: black; }
+        .bg-orange { background: #ffa500; color: black; } .bg-red { background: #ff0000; color: white; } .bg-yellow { background: #ffff00; color: black; }
+        .bg-green { background: #008000; color: white; } .bg-darkblue { background: #00008b; color: white; }
+        .bg-black { background: #000; color: white; } .bg-gray { background: #95a5a6; color: black; }
 
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
@@ -201,6 +189,13 @@
     </div>
 
     <div id="host-screen" class="screen">
+        <div id="trade-result-overlay-host" class="tr-overlay">
+            <div class="tr-box">
+                <div class="tr-title">TRADE ACCEPTED!</div>
+                <div id="tr-details-host" style="font-size:0.9rem; color:#555;"></div>
+                <div style="margin-top:20px; font-weight:bold; color:#aaa;">Resuming in 10s...</div>
+            </div>
+        </div>
         <div id="dice-overlay" class="overlay-layer">
             <div style="width:300px; height:150px; background:transparent; display:flex; justify-content:center; align-items:center; flex-direction:column;">
                 <div id="dice-container-host" class="dice-container"></div>
@@ -219,7 +214,7 @@
     </div>
 
     <div id="client-screen" class="screen">
-        <div id="trade-result-overlay">
+        <div id="trade-result-overlay" class="tr-overlay">
             <div class="tr-box">
                 <div class="tr-title">TRADE ACCEPTED!</div>
                 <div id="tr-details" style="font-size:0.9rem; color:#555;"></div>
@@ -229,7 +224,8 @@
 
         <div id="trade-ui">
             <div class="trade-header">TRADE WITH...</div>
-            <div id="trade-player-tabs"></div> <div style="display:flex; gap:10px;">
+            <div id="trade-player-tabs"></div>
+            <div style="display:flex; gap:10px;">
                 <div style="flex:1; text-align:center; font-weight:bold; font-size:0.8rem;">YOU GIVE</div>
                 <div style="flex:1; text-align:center; font-weight:bold; font-size:0.8rem;">YOU GET</div>
             </div>
@@ -288,7 +284,7 @@
         </div>
         <div id="c-status" style="text-align:center; color: #bbb; padding-bottom:10px;">Waiting for host...</div>
 
-        <div id="client-main-area">
+        <div id="client-main-area" onclick="closeSwipe(event)">
             <div id="deed-card" class="deed-card">
                 <div id="deed-header" class="deed-header">TITLE</div>
                 <div class="deed-body">
@@ -308,7 +304,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v18-"; 
+    const APP_ID = "poly-lob-v20-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
 
@@ -424,7 +420,6 @@
     function showJoin() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('join-flow').style.display = 'flex'; }
     function hideJoin() { document.getElementById('join-flow').style.display = 'none'; document.getElementById('main-menu').style.display = 'flex'; }
 
-    // --- AI LOGIC ---
     function addAI() {
         if (gameState.players.length >= 4) return;
         const pId = gameState.players.length;
@@ -438,22 +433,17 @@
         const pId = gameState.turnIndex;
         const p = gameState.players[pId];
         if (!p || !p.isAI) return;
-
         if(gameState.activeTrade || gameState.turnPhase === 'TRADE_SHOWCASE') return; 
-
         setTimeout(() => {
             if (gameState.turnIndex !== pId) return;
-            
             if (gameState.turnPhase === 'ROLLING') {
                 if (p.jailed && p.money >= 600) handleHostAction(pId, {type: 'PAY_JAIL'});
                 else handleHostAction(pId, {type: 'ROLL'});
-            }
-            else if (gameState.turnPhase === 'DECIDING') {
+            } else if (gameState.turnPhase === 'DECIDING') {
                 const sq = boardMap[gameState.pendingProp];
                 if (p.money >= sq.price) handleHostAction(pId, {type: 'BUY'});
                 else handleHostAction(pId, {type: 'PASS'});
-            }
-            else if (gameState.turnPhase === 'ACKNOWLEDGING') handleHostAction(pId, {type: 'OK'});
+            } else if (gameState.turnPhase === 'ACKNOWLEDGING') handleHostAction(pId, {type: 'OK'});
             else if (gameState.turnPhase === 'IDLE') handleHostAction(pId, {type: 'END_TURN'});
         }, 1500);
     }
@@ -463,15 +453,10 @@
         if(!p || !p.isAI) return;
         setTimeout(() => {
             const trade = gameState.activeTrade;
-            // Validate trade still exists and targets AI
-            if (trade && trade.to === targetId) {
-                // AI Decision: Accept if money >= 0 or getting properties (Simplistic)
-                handleHostAction(targetId, {type: 'TRADE_ACCEPT'});
-            }
-        }, 2000); // 2s thinking time
+            if (trade && trade.to === targetId) handleHostAction(targetId, {type: 'TRADE_ACCEPT'});
+        }, 2000); 
     }
 
-    // --- HOST LOGIC ---
     function initHost() {
         if(typeof Peer === 'undefined') { showError("PeerJS failed to load. Check internet."); return; }
         const code = generateCode();
@@ -545,17 +530,11 @@
         if(amount === 0) return;
         const payload = { type: 'MONEY_ANIM', pId: pId, amount: amount };
         Object.values(connections).forEach(c => c.send(payload));
-        // Show on host
         showMoneyAnim(amount, pId); 
     }
 
     function showMoneyAnim(amount, pId) {
-        // Host view: just center screen
-        // Client view logic handles 'if myId'
-        // For host, we just show a generic one or player specific? 
-        // For simplicity, Host sees all big center.
         if(!document.getElementById('host-screen').classList.contains('active')) return;
-        
         const el = document.createElement('div');
         el.className = amount > 0 ? 'money-popup mp-gain' : 'money-popup mp-loss';
         el.innerText = (amount > 0 ? '+' : '') + '$' + amount;
@@ -738,20 +717,15 @@
         else if(card.action === 'back_3') { gameState.movedByCard = true; movePlayerSequence(p, -3); }
         else if(card.action === 'gotojail') { p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); done = true; }
         else if(card.action === 'nearest_util') {
-            // Find distance
-            let dist = 0;
-            if (p.position < 12) dist = 12 - p.position;
-            else if (p.position < 28) dist = 28 - p.position;
-            else dist = (12 + 40) - p.position;
+            let pos = p.position; let target = 12;
+            if (pos >= 12 && pos < 28) target = 28; else if (pos >= 28) target = 12;
+            let dist = target - pos; if(dist < 0) dist += 40;
             gameState.movedByCard = true; movePlayerSequence(p, dist);
         }
         else if(card.action === 'nearest_rr') {
-            let dist = 0;
-            if (p.position < 5) dist = 5 - p.position;
-            else if (p.position < 15) dist = 15 - p.position;
-            else if (p.position < 25) dist = 25 - p.position;
-            else if (p.position < 35) dist = 35 - p.position;
-            else dist = (5 + 40) - p.position;
+            let pos = p.position; let target = 5;
+            if (pos >= 5) target = 15; if (pos >= 15) target = 25; if (pos >= 25) target = 35; if (pos >= 35) target = 5;
+            let dist = target - pos; if(dist < 0) dist += 40;
             gameState.movedByCard = true; movePlayerSequence(p, dist);
         }
         else if(card.action === 'pay_all') {
@@ -957,7 +931,15 @@
     function updateClientUI(state) {
         const me = state.players.find(p => p.id === myId);
         if(me.money !== lastBalance) {
-            // Self-animation if money changed quietly
+            const diff = me.money - lastBalance;
+            const color = diff > 0 ? '#2ecc71' : '#e74c3c';
+            const sign = diff > 0 ? '+' : '';
+            const el = document.createElement('div');
+            el.className = 'money-float';
+            el.style.color = color;
+            el.innerText = `${sign}$${diff}`;
+            document.querySelector('.c-balance-wrap').appendChild(el);
+            setTimeout(() => el.remove(), 2500);
             lastBalance = me.money;
         }
         document.getElementById('c-balance').innerText = `$${me.money}`;
@@ -973,7 +955,6 @@
         document.getElementById('incoming-trade-overlay').style.display = 'none';
         document.getElementById('trade-result-overlay').style.display = 'none';
 
-        // Check Trade Notification (10s Showcase)
         if(state.tradeNotification) {
             const tn = state.tradeNotification;
             document.getElementById('tr-details').innerHTML = `
@@ -982,7 +963,7 @@
             `;
             document.getElementById('trade-result-overlay').style.display = 'flex';
             document.getElementById('c-status').innerText = "Trade Showcase...";
-            return; // Block UI
+            return; 
         }
 
         if(state.activeTrade) {
@@ -998,7 +979,6 @@
 
         let showInventory = true;
 
-        // Trade Button Visibility - Icon next to name
         document.getElementById('trade-btn').style.display = (isMyTurn && state.turnPhase === 'IDLE') ? 'flex' : 'none';
 
         if(state.turnPhase === 'DECIDING' && isMyTurn) {
@@ -1056,31 +1036,23 @@
                 const tab = document.createElement('div');
                 tab.className = 'trade-tab';
                 tab.innerText = p.name;
-                tab.dataset.id = p.id;
+                tab.style.backgroundColor = getColorHex(p.colorClass); // FIX 3: COLOR TABS
                 tab.onclick = () => {
-                    document.querySelectorAll('.trade-tab').forEach(t => t.classList.remove('active'));
-                    tab.classList.add('active');
+                    document.querySelectorAll('.trade-tab').forEach(t => t.style.border = '2px solid transparent');
+                    tab.style.border = '2px solid white';
                     showTradeBuilder(p.id);
                 };
                 tabs.appendChild(tab);
             }
         });
         
-        // Auto-select first tab
-        if(targetId === null) targetId = firstAvailable;
-        if(targetId !== null) {
-            const initialTab = tabs.querySelector(`[data-id="${targetId}"]`);
-            if(initialTab) initialTab.click();
-        } else {
-            // No players?
-            document.getElementById('trade-ui').style.display = 'none';
-            alert("No players to trade with!");
-        }
+        if(targetId === null && firstAvailable !== null) targetId = firstAvailable;
+        if(targetId !== null) showTradeBuilder(targetId);
     }
 
     function showTradeBuilder(tid) {
         tradeTarget = tid;
-        document.getElementById('trade-step-1').style.display = 'none'; // Skipping old list
+        document.getElementById('trade-step-1').style.display = 'none';
         document.getElementById('trade-step-2').style.display = 'flex';
         fillTradeList('trade-give-list', myId);
         fillTradeList('trade-get-list', tid);
@@ -1090,7 +1062,6 @@
         const el = document.getElementById(elId);
         el.innerHTML = '';
         
-        // Group props by color first
         const owned = [];
         clientPropState.forEach((p, idx) => { if(p.owner === pid) owned.push({...boardMap[idx], idx: idx}); });
         
@@ -1099,7 +1070,6 @@
         const groups = {};
         owned.forEach(p => { if(!groups[p.group]) groups[p.group] = []; groups[p.group].push(p); });
 
-        // Sort order
         const order = ['bg-brown','bg-lightblue','bg-pink','bg-orange','bg-red','bg-yellow','bg-green','bg-darkblue','bg-gray','bg-black']; 
         const sortedKeys = Object.keys(groups).sort((a,b) => order.indexOf(a) - order.indexOf(b));
 
@@ -1113,9 +1083,7 @@
             groups[grp].forEach(p => {
                 const row = document.createElement('div');
                 row.className = 'trade-item';
-                // Add color strip
-                row.style.borderLeft = `5px solid var(--${p.group})`; // Use CSS var trick or inline color map
-                // Just use simple text for now
+                row.style.borderLeft = `5px solid var(--${p.group})`; 
                 row.innerHTML = `<span>${p.name}</span><input type="checkbox" class="trade-check" data-idx="${p.idx}">`;
                 el.appendChild(row);
             });
@@ -1140,6 +1108,7 @@
 
     function closeTrade() {
         document.getElementById('trade-ui').style.display = 'none';
+        document.getElementById('trade-step-2').style.display = 'none';
     }
 
     function respondTrade(accept) {
