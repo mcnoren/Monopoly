@@ -11,8 +11,10 @@
             --primary: #27ae60;
             --accent: #f1c40f;
             --sidebar-width: 320px;
+            /* Defined Colors for CSS Var Usage */
             --brown: #8b4513; --lightblue: #87ceeb; --pink: #ff69b4; --orange: #ffa500;
             --red: #ff0000; --yellow: #ffff00; --green: #008000; --darkblue: #00008b;
+            --black: #000000; --gray: #95a5a6;
         }
 
         * { box-sizing: border-box; }
@@ -130,7 +132,6 @@
         .trade-group-header span { font-size:0.7rem; background:rgba(255,255,255,0.2); padding:2px 5px; border-radius:4px; }
         .trade-item { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; margin-left:5px; }
         
-        /* Colored Property Names in Trade List */
         .trade-prop-name { flex-grow:1; font-weight:bold; padding:2px 5px; border-radius:3px; color:black; text-shadow:none; margin-right:10px; }
         .trade-check { transform: scale(1.3); }
 
@@ -143,17 +144,17 @@
 
         .p-red { background: #e74c3c; } .p-blue { background: #3498db; } .p-green { background: #2ecc71; } .p-yellow { background: #f1c40f; }
         
-        /* Board Colors */
-        .bg-brown { background: var(--brown); color: white; } 
-        .bg-lightblue { background: var(--lightblue); color: black; } 
-        .bg-pink { background: var(--pink); color: black; }
-        .bg-orange { background: var(--orange); color: black; } 
-        .bg-red { background: var(--red); color: white; } 
-        .bg-yellow { background: var(--yellow); color: black; }
-        .bg-green { background: var(--green); color: white; } 
-        .bg-darkblue { background: var(--darkblue); color: white; }
-        .bg-black { background: black; color: white; } 
-        .bg-gray { background: #95a5a6; color: black; }
+        /* Board Colors (Explicit) */
+        .bg-brown { background-color: var(--brown); color: white; } 
+        .bg-lightblue { background-color: var(--lightblue); color: black; } 
+        .bg-pink { background-color: var(--pink); color: black; }
+        .bg-orange { background-color: var(--orange); color: black; } 
+        .bg-red { background-color: var(--red); color: white; } 
+        .bg-yellow { background-color: var(--yellow); color: black; }
+        .bg-green { background-color: var(--green); color: white; } 
+        .bg-darkblue { background-color: var(--darkblue); color: white; }
+        .bg-black { background-color: black; color: white; } 
+        .bg-gray { background-color: #95a5a6; color: black; }
 
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
     </style>
@@ -227,7 +228,7 @@
     </div>
 
     <div id="client-screen" class="screen">
-        <div id="trade-result-overlay" class="tr-overlay">
+        <div id="trade-result-overlay" class="tr-overlay" onclick="closeSwipe(event)">
             <div class="tr-box">
                 <div class="tr-title">TRADE ACCEPTED!</div>
                 <div id="tr-details" style="font-size:0.9rem; color:#555;"></div>
@@ -235,7 +236,7 @@
             </div>
         </div>
 
-        <div id="trade-ui">
+        <div id="trade-ui" onclick="if(event.target.id==='trade-ui') closeTrade()">
             <div class="trade-header">TRADE WITH...</div>
             <div id="trade-player-tabs"></div>
             <div style="display:flex; gap:10px; margin-bottom:5px;">
@@ -256,8 +257,8 @@
             </div>
         </div>
 
-        <div id="incoming-trade-overlay" class="overlay-layer" style="z-index: 600;">
-            <div class="card-display" style="height:auto; min-height:300px;">
+        <div id="incoming-trade-overlay" class="overlay-layer" style="z-index: 600;" onclick="closeSwipe(event)">
+            <div class="card-display" style="height:auto; min-height:300px;" onclick="event.stopPropagation()">
                 <div class="cd-title">TRADE OFFER</div>
                 <div id="inc-trade-desc" style="text-align:left; margin:10px 0; font-size:0.9rem;"></div>
                 <div style="display:flex; gap:5px; width:100%;">
@@ -281,8 +282,8 @@
             </div>
         </div>
 
-        <div id="client-overlay-card" class="overlay-layer" style="z-index: 200;">
-            <div style="display:flex; flex-direction:column; align-items:center;">
+        <div id="client-overlay-card" class="overlay-layer" style="z-index: 200;" onclick="closeSwipe(event)">
+            <div style="display:flex; flex-direction:column; align-items:center;" onclick="event.stopPropagation()">
                 <div id="c-ov-content" class="card-display"><div id="c-ov-title" class="cd-title">CHANCE</div><div id="c-ov-text" class="cd-text">Text</div></div>
                 <div style="margin-top: 25px;"><button class="btn btn-green" style="padding:15px 40px; font-size:1.5rem; box-shadow:0 0 10px black;" onclick="send('OK')">OK</button></div>
             </div>
@@ -298,7 +299,7 @@
         <div id="c-status" style="text-align:center; color: #bbb; padding-bottom:10px;">Waiting for host...</div>
 
         <div id="client-main-area" onclick="closeSwipe(event)">
-            <div id="deed-card" class="deed-card">
+            <div id="deed-card" class="deed-card" onclick="event.stopPropagation()">
                 <div id="deed-header" class="deed-header">TITLE</div>
                 <div class="deed-body">
                     <div style="text-align:center; margin-bottom:10px;">Rent <span id="r-base">$0</span></div>
@@ -311,13 +312,13 @@
                 </div>
                 <div style="background:black; color:white; text-align:center; padding:5px; font-weight:bold; font-size:1.5rem;">PRICE <span id="r-price">$0</span></div>
             </div>
-            <div id="inventory-grid"><div style="color:#888;">No properties owned</div></div>
+            <div id="inventory-grid" onclick="event.stopPropagation()"><div style="color:#888;">No properties owned</div></div>
         </div>
-        <div id="c-controls"></div>
+        <div id="c-controls" onclick="event.stopPropagation()"></div>
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v21-"; 
+    const APP_ID = "poly-lob-v22-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
 
@@ -433,7 +434,6 @@
     function showJoin() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('join-flow').style.display = 'flex'; }
     function hideJoin() { document.getElementById('join-flow').style.display = 'none'; document.getElementById('main-menu').style.display = 'flex'; }
 
-    // --- AI LOGIC ---
     function addAI() {
         if (gameState.players.length >= 4) return;
         const pId = gameState.players.length;
@@ -451,7 +451,7 @@
         // Trade response AI
         if(gameState.activeTrade && gameState.activeTrade.to === pId) {
             setTimeout(() => {
-                handleHostAction(pId, {type: 'TRADE_ACCEPT'}); // Simple Accept all for now
+                handleHostAction(pId, {type: 'TRADE_ACCEPT'});
             }, 2000);
             return;
         }
@@ -475,7 +475,15 @@
         }, 1500);
     }
 
-    // --- HOST LOGIC ---
+    function processAITradeResponse(targetId) {
+        const p = gameState.players[targetId];
+        if(!p || !p.isAI) return;
+        setTimeout(() => {
+            const trade = gameState.activeTrade;
+            if (trade && trade.to === targetId) handleHostAction(targetId, {type: 'TRADE_ACCEPT'});
+        }, 2000); 
+    }
+
     function initHost() {
         if(typeof Peer === 'undefined') { showError("PeerJS failed to load. Check internet."); return; }
         const code = generateCode();
@@ -591,9 +599,7 @@
         if(action.type === 'TRADE_OFFER') {
             gameState.activeTrade = { from: pId, to: parseInt(action.target), offer: action.offer, req: action.req };
             broadcastState();
-            // Force AI Check
-            const targetP = gameState.players[gameState.activeTrade.to];
-            if(targetP && targetP.isAI) processAITurn(); 
+            processAITradeResponse(gameState.activeTrade.to);
             return;
         }
         if(action.type === 'TRADE_DECLINE') {
@@ -1156,7 +1162,7 @@
             groups[grp].forEach(p => {
                 const row = document.createElement('div');
                 row.className = 'trade-item';
-                row.style.borderLeft = `5px solid var(--${grp.replace('bg-','')})`; // CSS var not def, standard colors instead?
+                row.style.borderLeft = `5px solid var(--${grp.replace('bg-','')})`; // CSS var trick or inline color map
                 // Just rely on group header color.
                 row.innerHTML = `<span class="trade-prop-name ${grp}">${p.name}</span><input type="checkbox" class="trade-check" data-idx="${p.idx}">`;
                 el.appendChild(row);
