@@ -84,8 +84,20 @@
         .c-header { text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px; position:relative; }
         .c-balance { font-size: 2.5rem; color: #2ecc71; font-weight: bold; position: relative; display: inline-block; }
         
-        .money-float { position: absolute; top: 0; left: 100%; font-size: 1.5rem; font-weight: bold; animation: floatUp 2s forwards; white-space: nowrap; pointer-events: none; }
-        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+        /* IMPROVED MONEY ANIMATION */
+        .money-float { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            font-size: 3rem; font-weight: 900; 
+            animation: floatUpFade 2.5s forwards; 
+            white-space: nowrap; pointer-events: none; z-index: 999;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+        @keyframes floatUpFade { 
+            0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); } 
+            20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -50px) scale(1); } 
+            100% { opacity: 0; transform: translate(-50%, -80px) scale(0.8); } 
+        }
 
         .deed-card { background: white; color: black; padding: 0; width: 100%; max-width: 320px; margin: 0 auto; display: none; border: 1px solid black; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .deed-header { background: #333; color: white; padding: 10px; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 1.2rem; border: 2px solid black; margin: 5px; }
@@ -116,6 +128,12 @@
         .trade-header { font-size: 1.5rem; text-align: center; margin-bottom: 15px; border-bottom: 1px solid #555; padding-bottom: 5px; }
         .trade-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 5px; margin-bottom: 2px; }
         .trade-check { transform: scale(1.5); }
+
+        /* TRADE RESULT SHOWCASE */
+        #trade-result-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(46, 204, 113, 0.95); z-index:700; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; animation:popIn 0.3s; }
+        .tr-box { background:white; color:black; padding:30px; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.5); width:90%; max-width:400px; }
+        .tr-title { font-size: 2rem; font-weight: 900; color:#27ae60; margin-bottom:10px; }
+        .tr-detail { font-size:1.1rem; margin:10px 0; border-bottom:1px solid #eee; padding-bottom:5px; }
 
         #error-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; z-index: 1000; font-weight: bold; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
@@ -190,6 +208,14 @@
     </div>
 
     <div id="client-screen" class="screen">
+        <div id="trade-result-overlay">
+            <div class="tr-box">
+                <div class="tr-title">TRADE ACCEPTED!</div>
+                <div id="tr-details" style="font-size:0.9rem; color:#555;"></div>
+                <div style="margin-top:20px; font-weight:bold; color:#aaa;">Resuming in 10s...</div>
+            </div>
+        </div>
+
         <div id="trade-ui">
             <div class="trade-header">TRADE</div>
             <div id="trade-step-1">
@@ -231,7 +257,7 @@
 
         <div id="swipe-overlay" onclick="closeSwipe(event)">
             <div class="swipe-header"><h2 style="margin:0">MY PROPERTIES</h2></div>
-            <div id="swipe-container" class="swipe-container"></div>
+            <div id="swipe-container" class="swipe-container" onclick="closeSwipe(event)"></div>
             <div style="text-align:center; padding:10px; color:#aaa; pointer-events:none;">Swipe to view • Tap outside to close</div>
         </div>
 
@@ -251,7 +277,7 @@
 
         <div class="c-header">
             <h2 id="c-name" style="margin:0">Player</h2>
-            <div class="c-balance-wrap"><span id="c-balance" class="c-balance">$1500</span></div>
+            <div class="c-balance-wrap" style="position:relative;"><span id="c-balance" class="c-balance">$1500</span></div>
             <div id="c-status" style="color: #bbb; margin-top:5px;">Waiting for host...</div>
         </div>
 
@@ -275,7 +301,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v15-"; 
+    const APP_ID = "poly-lob-v16-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
 
@@ -378,6 +404,7 @@
         activeCard: null,
         pendingCardAction: null,
         activeTrade: null,
+        tradeNotification: null, // NEW: For 10s showcase
         gameStarted: false,
         movedByCard: false 
     };
@@ -403,34 +430,17 @@
     function processAITurn() {
         const pId = gameState.turnIndex;
         const p = gameState.players[pId];
-        // AI Logic runs if it's AI turn OR AI is responding to trade
-        if (p && p.isAI && gameState.turnIndex === pId) {
-            runAIGameLoop(pId, p);
+        if (!p || !p.isAI) return;
+
+        // Trade response AI
+        if(gameState.activeTrade && gameState.activeTrade.to === pId) {
+            setTimeout(() => {
+                handleHostAction(pId, {type: 'TRADE_ACCEPT'}); // Simple Accept all for now, can refine
+            }, 2000);
+            return;
         }
-    }
 
-    function processAITradeResponse(targetId) {
-        const aiPlayer = gameState.players[targetId];
-        if(!aiPlayer || !aiPlayer.isAI) return;
-        
-        setTimeout(() => {
-            const trade = gameState.activeTrade;
-            if(trade && trade.to === targetId) {
-                // Simple AI: Accept if gaining money or properties (simplified)
-                const offerVal = trade.offer.money + (trade.offer.props.length * 150);
-                const reqVal = trade.req.money + (trade.req.props.length * 150);
-                
-                if(offerVal >= reqVal * 0.9) { // Accept if reasonable
-                    handleHostAction(targetId, {type: 'TRADE_ACCEPT'});
-                } else {
-                    handleHostAction(targetId, {type: 'TRADE_DECLINE'});
-                }
-            }
-        }, 2000);
-    }
-
-    function runAIGameLoop(pId, p) {
-        if (gameState.activeTrade) return; // Wait for trade
+        if(gameState.activeTrade || gameState.turnPhase === 'TRADE_SHOWCASE') return; 
 
         setTimeout(() => {
             if (gameState.turnIndex !== pId) return;
@@ -444,13 +454,8 @@
                 if (p.money >= sq.price) handleHostAction(pId, {type: 'BUY'});
                 else handleHostAction(pId, {type: 'PASS'});
             }
-            else if (gameState.turnPhase === 'ACKNOWLEDGING') {
-                handleHostAction(pId, {type: 'OK'});
-            }
-            else if (gameState.turnPhase === 'IDLE') {
-                // AI done with turn
-                handleHostAction(pId, {type: 'END_TURN'});
-            }
+            else if (gameState.turnPhase === 'ACKNOWLEDGING') handleHostAction(pId, {type: 'OK'});
+            else if (gameState.turnPhase === 'IDLE') handleHostAction(pId, {type: 'END_TURN'});
         }, 1500);
     }
 
@@ -543,22 +548,19 @@
 
     function handleHostAction(pId, action) {
         if(action.type === 'PING') return;
-        // Allow trade actions from anyone involved
         if(pId !== gameState.turnIndex && action.type !== 'TRADE_ACCEPT' && action.type !== 'TRADE_DECLINE' && action.type !== 'TRADE_OFFER') return;
         const p = gameState.players[pId];
 
         if(action.type === 'TRADE_OFFER') {
             gameState.activeTrade = { from: pId, to: parseInt(action.target), offer: action.offer, req: action.req };
             broadcastState();
-            // Check if target is AI
-            processAITradeResponse(gameState.activeTrade.to);
+            processAITurn(); 
             return;
         }
         if(action.type === 'TRADE_DECLINE') {
             log("Trade Declined");
             gameState.activeTrade = null;
             broadcastState();
-            // If it was AI turn, resume
             processAITurn();
             return;
         }
@@ -575,9 +577,24 @@
             trade.req.props.forEach(idx => { boardMap[idx].owner = trade.from; });
 
             log("Trade Completed!");
+            
+            // --- NEW: 10 SECOND SHOWCASE ---
+            gameState.tradeNotification = {
+                title: "TRADE ACCEPTED",
+                p1: pFrom.name, p2: pTo.name,
+                gMoney: trade.offer.money, gProps: trade.offer.props,
+                rMoney: trade.req.money, rProps: trade.req.props
+            };
             gameState.activeTrade = null;
+            gameState.turnPhase = 'TRADE_SHOWCASE';
             broadcastState();
-            processAITurn();
+
+            setTimeout(() => {
+                gameState.tradeNotification = null;
+                gameState.turnPhase = 'IDLE';
+                broadcastState();
+                processAITurn();
+            }, 10000);
             return;
         }
 
@@ -765,19 +782,13 @@
         document.getElementById('board-wrapper').appendChild(d);
         updateToken(p);
     }
-    // Fixed Token Positioning (Corner Offsets)
-    const OFFSET_MAP = [
-        {x: -1.5, y: -1.5},
-        {x: 1.5, y: -1.5},
-        {x: -1.5, y: 1.5},
-        {x: 1.5, y: 1.5}
-    ];
+    const OFFSET_MAP = [{x:-1.5, y:-1.5}, {x:1.5, y:-1.5}, {x:-1.5, y:1.5}, {x:1.5, y:1.5}];
     function updateToken(p) {
         const sq = boardMap[p.position];
         const el = document.getElementById(`tok-${p.id}`);
-        const offset = OFFSET_MAP[p.id % 4];
-        el.style.top = (sq.top + offset.y) + '%'; 
-        el.style.left = (sq.left + offset.x) + '%';
+        const off = OFFSET_MAP[p.id % 4];
+        el.style.top = (sq.top + off.y) + '%'; 
+        el.style.left = (sq.left + off.x) + '%';
     }
     function addOwnerBar(idx, color) {
         const sq = boardMap[idx];
@@ -817,7 +828,8 @@
             activeCard: gameState.activeCard,
             pendingProp: gameState.pendingProp !== null ? boardMap[gameState.pendingProp] : null,
             properties: propData,
-            activeTrade: gameState.activeTrade
+            activeTrade: gameState.activeTrade,
+            tradeNotification: gameState.tradeNotification
         };
         Object.values(connections).forEach(c => c.send(payload));
     }
@@ -860,6 +872,7 @@
             if(data.properties) clientPropState = data.properties;
             gameState.players = data.players;
             gameState.activeTrade = data.activeTrade; 
+            gameState.tradeNotification = data.tradeNotification;
             updateClientUI(data); 
         }
     }
@@ -875,7 +888,7 @@
             el.style.color = color;
             el.innerText = `${sign}$${diff}`;
             document.querySelector('.c-balance-wrap').appendChild(el);
-            setTimeout(() => el.remove(), 2000);
+            setTimeout(() => el.remove(), 2500);
             lastBalance = me.money;
         }
         document.getElementById('c-balance').innerText = `$${me.money}`;
@@ -889,6 +902,19 @@
         document.getElementById('client-overlay-card').style.display = 'none';
         document.getElementById('inventory-grid').style.display = 'none';
         document.getElementById('incoming-trade-overlay').style.display = 'none';
+        document.getElementById('trade-result-overlay').style.display = 'none';
+
+        // Check Trade Notification (10s Showcase)
+        if(state.tradeNotification) {
+            const tn = state.tradeNotification;
+            document.getElementById('tr-details').innerHTML = `
+                <div><b>${tn.p1}</b> gave $${tn.gMoney} & ${tn.gProps.length} props</div>
+                <div><b>${tn.p2}</b> gave $${tn.rMoney} & ${tn.rProps.length} props</div>
+            `;
+            document.getElementById('trade-result-overlay').style.display = 'flex';
+            document.getElementById('c-status').innerText = "Trade Showcase...";
+            return; // Block UI
+        }
 
         if(state.activeTrade) {
             if(state.activeTrade.to === myId) {
@@ -955,11 +981,11 @@
         const list = document.getElementById('trade-player-list');
         list.innerHTML = '';
         gameState.players.forEach(p => {
-            if(p.id !== myId) { // Allow trading with everyone except self
+            if(p.id !== myId) { 
                 const b = document.createElement('button');
                 b.className = 'btn btn-blue';
                 b.style.width = '100%'; b.style.marginBottom = '5px';
-                b.innerText = p.name;
+                b.innerText = p.name + (p.isAI ? ' (BOT)' : '');
                 b.onclick = () => showTradeBuilder(p.id);
                 list.appendChild(b);
             }
@@ -1071,8 +1097,11 @@
         props.forEach(p => {
             const wrap = document.createElement('div');
             wrap.className = 'swipe-item';
+            wrap.onclick = (e) => closeSwipe(e); // Allow click to pass through to bg
             const card = document.createElement('div');
             card.style.cssText = "background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;";
+            card.onclick = (e) => e.stopPropagation(); // Block clicks on card itself
+            
             const houseCount = p.houses || 0;
             const hl = (idx) => (houseCount === idx ? 'rent-highlight' : '');
             let html = `<div class="deed-header ${p.group}">${p.name}</div><div class="deed-body">`;
@@ -1091,7 +1120,9 @@
     }
 
     window.closeSwipe = function(e) {
-        if(e.target.id === 'swipe-overlay') { document.getElementById('swipe-overlay').style.display = 'none'; }
+        if(e.target.id === 'swipe-overlay' || e.target.id === 'swipe-container' || e.target.classList.contains('swipe-item')) {
+            document.getElementById('swipe-overlay').style.display = 'none';
+        }
     }
 
     function renderDeed(prop, elementId) {
