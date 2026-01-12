@@ -58,9 +58,9 @@
         input:checked + .slider:before { transform: translateX(24px); }
 
         #host-screen { flex-direction: row; position: relative; }
-        #board-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #111; }
+        #board-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
         #board-wrapper { height: 95vh; width: 95vh; background-image: url('monopoly_board.jpg'); background-size: cover; border-radius: 5px; box-shadow: 0 0 50px rgba(0,0,0,0.8); position: relative; }
-        #host-sidebar { width: var(--sidebar-width); background: #2c3e50; display: flex; flex-direction: column; padding: 20px; border-left: 2px solid #444; }
+        #host-sidebar { width: var(--sidebar-width); background: #2c3e50; display: flex; flex-direction: column; padding: 20px; border-left: 2px solid #444; position: relative; }
         
         .overlay-layer { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; display:none; flex-direction: column; align-items:center; justify-content:center; }
         .card-display { width: 320px; height: 200px; background: white; border-radius: 12px; padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: center; color: black; animation: popIn 0.3s; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -81,22 +81,38 @@
         .pot-display { background: #27ae60; padding: 10px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.2rem; }
 
         #client-screen { flex-direction: column; background: #34495e; padding: 15px; position:relative; overflow: hidden; }
-        .c-header { text-align: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px; position:relative; }
-        .c-balance { font-size: 2.5rem; color: #2ecc71; font-weight: bold; position: relative; display: inline-block; }
         
-        /* IMPROVED MONEY ANIMATION */
-        .money-float { 
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            font-size: 3rem; font-weight: 900; 
-            animation: floatUpFade 2.5s forwards; 
-            white-space: nowrap; pointer-events: none; z-index: 999;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        /* HEADER WITH TRADE BUTTON */
+        .c-header { 
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px; margin-bottom: 15px; position:relative; 
         }
-        @keyframes floatUpFade { 
-            0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); } 
-            20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); }
-            80% { opacity: 1; transform: translate(-50%, -50px) scale(1); } 
-            100% { opacity: 0; transform: translate(-50%, -80px) scale(0.8); } 
+        .header-left { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.2rem; }
+        .trade-icon-btn {
+            background: none; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; width: 40px; height: 40px;
+            color: white; font-size: 1.2rem; cursor: pointer; display: flex; justify-content: center; align-items: center;
+            display: none; /* Hidden by default */
+        }
+        .trade-icon-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.1); }
+
+        .c-balance { font-size: 2rem; color: #2ecc71; font-weight: bold; }
+        
+        /* NEW MONEY ANIMATION (CENTERED POPUP) */
+        .money-popup {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            padding: 20px 40px; border-radius: 15px; font-size: 3rem; font-weight: 900;
+            color: white; z-index: 1000; animation: popFade 2.5s forwards;
+            text-shadow: 2px 2px 0 #000; pointer-events: none;
+        }
+        .mp-gain { background: rgba(39, 174, 96, 0.9); border: 3px solid #2ecc71; }
+        .mp-loss { background: rgba(192, 57, 43, 0.9); border: 3px solid #e74c3c; }
+
+        @keyframes popFade {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            25% { transform: translate(-50%, -50%) scale(1); }
+            75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -100%) scale(0.8); }
         }
 
         .deed-card { background: white; color: black; padding: 0; width: 100%; max-width: 320px; margin: 0 auto; display: none; border: 1px solid black; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
@@ -276,10 +292,13 @@
         </div>
 
         <div class="c-header">
-            <h2 id="c-name" style="margin:0">Player</h2>
-            <div class="c-balance-wrap" style="position:relative;"><span id="c-balance" class="c-balance">$1500</span></div>
-            <div id="c-status" style="color: #bbb; margin-top:5px;">Waiting for host...</div>
+            <div class="header-left">
+                <button id="trade-btn" class="trade-icon-btn" onclick="openTrade()">🤝</button>
+                <div id="c-name" style="margin:0">Player</div>
+            </div>
+            <div class="c-balance-wrap"><span id="c-balance" class="c-balance">$1500</span></div>
         </div>
+        <div id="c-status" style="text-align:center; color: #bbb; padding-bottom:10px;">Waiting for host...</div>
 
         <div id="client-main-area">
             <div id="deed-card" class="deed-card">
@@ -301,7 +320,7 @@
     </div>
 
 <script>
-    const APP_ID = "poly-lob-v16-"; 
+    const APP_ID = "poly-lob-v17-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
 
@@ -404,7 +423,7 @@
         activeCard: null,
         pendingCardAction: null,
         activeTrade: null,
-        tradeNotification: null, // NEW: For 10s showcase
+        tradeNotification: null,
         gameStarted: false,
         movedByCard: false 
     };
@@ -435,7 +454,7 @@
         // Trade response AI
         if(gameState.activeTrade && gameState.activeTrade.to === pId) {
             setTimeout(() => {
-                handleHostAction(pId, {type: 'TRADE_ACCEPT'}); // Simple Accept all for now, can refine
+                handleHostAction(pId, {type: 'TRADE_ACCEPT'}); 
             }, 2000);
             return;
         }
@@ -529,6 +548,16 @@
         }, 2000);
     }
 
+    // Money Animation Trigger
+    function triggerMoneyAnim(pId, amount) {
+        if(amount === 0) return;
+        const payload = { type: 'MONEY_ANIM', pId: pId, amount: amount };
+        Object.values(connections).forEach(c => c.send(payload));
+        // Host self-trigger handled in client view, but host logic is separate. 
+        // We will just let client logic handle visual. Host UI doesn't have money overlay logic.
+        // Actually, host SHOULD see it. We will add host listener.
+    }
+
     async function movePlayerSequence(p, steps) {
         const direction = steps > 0 ? 1 : -1;
         const count = Math.abs(steps);
@@ -537,6 +566,7 @@
             if(direction === 1 && p.position === 0) {
                 const sal = gameState.rules.goDouble ? 400 : 200;
                 p.money += sal;
+                triggerMoneyAnim(p.id, sal);
                 log(`Passed GO. Collect $${sal}`);
             }
             updateToken(p);
@@ -554,7 +584,7 @@
         if(action.type === 'TRADE_OFFER') {
             gameState.activeTrade = { from: pId, to: parseInt(action.target), offer: action.offer, req: action.req };
             broadcastState();
-            processAITurn(); 
+            processAITradeResponse(gameState.activeTrade.to);
             return;
         }
         if(action.type === 'TRADE_DECLINE') {
@@ -578,7 +608,10 @@
 
             log("Trade Completed!");
             
-            // --- NEW: 10 SECOND SHOWCASE ---
+            // Trigger Money Anims
+            if(trade.req.money > 0) { triggerMoneyAnim(trade.from, -trade.req.money); triggerMoneyAnim(trade.to, trade.req.money); }
+            if(trade.offer.money > 0) { triggerMoneyAnim(trade.from, trade.offer.money); triggerMoneyAnim(trade.to, -trade.offer.money); }
+
             gameState.tradeNotification = {
                 title: "TRADE ACCEPTED",
                 p1: pFrom.name, p2: pTo.name,
@@ -601,6 +634,7 @@
         if(action.type === 'PAY_JAIL') {
             if(p.money >= 50) {
                 p.money -= 50;
+                triggerMoneyAnim(p.id, -50);
                 p.jailed = false;
                 p.jailTurns = 0;
                 if(gameState.rules.pot) { gameState.potMoney += 50; updatePot(); }
@@ -620,7 +654,7 @@
             showDiceResult(d1, d2);
 
             setTimeout(() => {
-                if(d1===1 && d2===1 && gameState.rules.snake) { p.money += 500; log("Snake Eyes! +$500 Bonus"); }
+                if(d1===1 && d2===1 && gameState.rules.snake) { p.money += 500; triggerMoneyAnim(p.id, 500); log("Snake Eyes! +$500 Bonus"); }
                 if(p.jailed) {
                     if(d1===d2) { p.jailed = false; p.jailTurns = 0; log("Doubles! Released."); movePlayerSequence(p, total); } 
                     else {
@@ -629,6 +663,7 @@
                         if(p.jailTurns >= 3) {
                             log("3rd Fail. Paying $50.");
                             p.money -= 50;
+                            triggerMoneyAnim(p.id, -50);
                             if(gameState.rules.pot) { gameState.potMoney += 50; updatePot(); }
                             p.jailed = false; p.jailTurns = 0;
                             movePlayerSequence(p, total);
@@ -647,6 +682,7 @@
             const sq = boardMap[gameState.pendingProp];
             if(p.money >= sq.price) {
                 p.money -= sq.price;
+                triggerMoneyAnim(p.id, -sq.price);
                 sq.owner = pId;
                 addOwnerBar(gameState.pendingProp, p.colorClass);
                 log(`Bought ${sq.name}`);
@@ -694,24 +730,45 @@
             gameState.movedByCard = true;
             movePlayerSequence(p, dist); 
         } 
-        else if(card.action === 'money') { p.money += card.amount; done = true; }
+        else if(card.action === 'money') { p.money += card.amount; triggerMoneyAnim(p.id, card.amount); done = true; }
         else if(card.action === 'back_3') { gameState.movedByCard = true; movePlayerSequence(p, -3); }
         else if(card.action === 'gotojail') { p.position = 10; p.jailed = true; p.jailTurns = 0; updateToken(p); log("Sent to Jail!"); done = true; }
-        else if(card.action === 'nearest_util' || card.action === 'nearest_rr') {
-            gameState.movedByCard = true; movePlayerSequence(p, 5); 
+        else if(card.action === 'nearest_util') {
+            // Find distance
+            let dist = 0;
+            if (p.position < 12) dist = 12 - p.position;
+            else if (p.position < 28) dist = 28 - p.position;
+            else dist = (12 + 40) - p.position;
+            gameState.movedByCard = true; movePlayerSequence(p, dist);
+        }
+        else if(card.action === 'nearest_rr') {
+            let dist = 0;
+            if (p.position < 5) dist = 5 - p.position;
+            else if (p.position < 15) dist = 15 - p.position;
+            else if (p.position < 25) dist = 25 - p.position;
+            else if (p.position < 35) dist = 35 - p.position;
+            else dist = (5 + 40) - p.position;
+            gameState.movedByCard = true; movePlayerSequence(p, dist);
         }
         else if(card.action === 'pay_all') {
-            gameState.players.forEach(pl => { if(pl.id !== p.id) { p.money -= card.amount; pl.money += card.amount; } });
+            gameState.players.forEach(pl => { if(pl.id !== p.id) { 
+                p.money -= card.amount; pl.money += card.amount; 
+                triggerMoneyAnim(p.id, -card.amount); triggerMoneyAnim(pl.id, card.amount);
+            } });
             done = true;
         }
         else if(card.action === 'collect_all') {
-            gameState.players.forEach(pl => { if(pl.id !== p.id) { pl.money -= card.amount; p.money += card.amount; } });
+            gameState.players.forEach(pl => { if(pl.id !== p.id) { 
+                pl.money -= card.amount; p.money += card.amount; 
+                triggerMoneyAnim(pl.id, -card.amount); triggerMoneyAnim(p.id, card.amount);
+            } });
             done = true;
         }
         else if(card.action === 'repairs') {
             let cost = 0;
             boardMap.forEach(sq => { if(sq.owner === p.id) { cost += (sq.houses === 5) ? card.hotel : (sq.houses * card.house); } });
             p.money -= cost;
+            triggerMoneyAnim(p.id, -cost);
             if(gameState.rules.pot) { gameState.potMoney += cost; updatePot(); }
             done = true;
         }
@@ -738,6 +795,8 @@
                     const rent = sq.rent[sq.houses];
                     p.money -= rent;
                     gameState.players[sq.owner].money += rent;
+                    triggerMoneyAnim(p.id, -rent);
+                    triggerMoneyAnim(sq.owner, rent);
                     log(`Paid $${rent} rent.`);
                 }
                 gameState.turnPhase = 'IDLE'; broadcastState(); processAITurn();
@@ -748,6 +807,7 @@
         else if(sq.type === 'parking') {
             if(gameState.rules.pot && gameState.potMoney > 0) {
                 p.money += gameState.potMoney;
+                triggerMoneyAnim(p.id, gameState.potMoney);
                 log(`Won Jackpot! $${gameState.potMoney}`);
                 gameState.potMoney = 0;
                 updatePot();
@@ -762,6 +822,7 @@
 
     function payTax(p, amt) {
         p.money -= amt;
+        triggerMoneyAnim(p.id, -amt);
         if(gameState.rules.pot) { gameState.potMoney += amt; updatePot(); log(`Paid $${amt} tax to Pot.`); } 
         else { log(`Paid $${amt} tax.`); }
     }
@@ -865,6 +926,10 @@
             return;
         }
         if(data.type === 'HIDE_DICE') { document.getElementById('client-dice-overlay').style.display = 'none'; return; }
+        if(data.type === 'MONEY_ANIM') {
+            if(myId === data.pId) showMoneyAnim(data.amount);
+            return;
+        }
         if(data.type === 'WELCOME') { switchScreen('client-screen'); myId = data.player.id; document.getElementById('c-name').innerText = data.player.name; lastBalance = data.player.money; }
         else if(data.type === 'ERROR') { showError(data.msg); document.getElementById('btn-connect').innerText = "CONNECT"; }
         else if(data.type === 'LOBBY_UPDATE') { document.getElementById('c-status').innerText = "Host is configuring rules..."; }
@@ -877,20 +942,16 @@
         }
     }
 
+    function showMoneyAnim(amount) {
+        const el = document.createElement('div');
+        el.className = amount > 0 ? 'money-popup mp-gain' : 'money-popup mp-loss';
+        el.innerText = (amount > 0 ? '+' : '') + '$' + amount;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 2500);
+    }
+
     function updateClientUI(state) {
         const me = state.players.find(p => p.id === myId);
-        if(me.money !== lastBalance) {
-            const diff = me.money - lastBalance;
-            const color = diff > 0 ? '#2ecc71' : '#e74c3c';
-            const sign = diff > 0 ? '+' : '';
-            const el = document.createElement('div');
-            el.className = 'money-float';
-            el.style.color = color;
-            el.innerText = `${sign}$${diff}`;
-            document.querySelector('.c-balance-wrap').appendChild(el);
-            setTimeout(() => el.remove(), 2500);
-            lastBalance = me.money;
-        }
         document.getElementById('c-balance').innerText = `$${me.money}`;
         const isMyTurn = state.turnIndex === myId;
         clientTurnState = isMyTurn; 
@@ -904,7 +965,6 @@
         document.getElementById('incoming-trade-overlay').style.display = 'none';
         document.getElementById('trade-result-overlay').style.display = 'none';
 
-        // Check Trade Notification (10s Showcase)
         if(state.tradeNotification) {
             const tn = state.tradeNotification;
             document.getElementById('tr-details').innerHTML = `
@@ -913,7 +973,7 @@
             `;
             document.getElementById('trade-result-overlay').style.display = 'flex';
             document.getElementById('c-status').innerText = "Trade Showcase...";
-            return; // Block UI
+            return; 
         }
 
         if(state.activeTrade) {
@@ -928,6 +988,9 @@
         }
 
         let showInventory = true;
+
+        // Trade Button Visibility
+        document.getElementById('trade-btn').style.display = isMyTurn ? 'flex' : 'none';
 
         if(state.turnPhase === 'DECIDING' && isMyTurn) {
             showInventory = false;
@@ -958,12 +1021,7 @@
                 }
             }
             else if(state.turnPhase === 'IDLE') {
-                con.innerHTML = `
-                    <div style="display:flex; gap:10px; margin-bottom:10px;">
-                        <button class="btn-action btn-orange" style="flex:1" onclick="openTrade()">TRADE</button>
-                    </div>
-                    <button class="btn-action btn-red" onclick="send('END_TURN')">DONE WITH TURN</button>
-                `;
+                con.innerHTML = `<button class="btn-action btn-red" onclick="send('END_TURN')">DONE WITH TURN</button>`;
             }
         } else {
             document.getElementById('c-status').innerText = `${state.players[state.turnIndex].name}'s Turn`;
@@ -1097,10 +1155,10 @@
         props.forEach(p => {
             const wrap = document.createElement('div');
             wrap.className = 'swipe-item';
-            wrap.onclick = (e) => closeSwipe(e); // Allow click to pass through to bg
+            wrap.onclick = (e) => closeSwipe(e); 
             const card = document.createElement('div');
             card.style.cssText = "background:white; color:black; padding:0; width:280px; border:1px solid black; box-shadow:0 0 10px white;";
-            card.onclick = (e) => e.stopPropagation(); // Block clicks on card itself
+            card.onclick = (e) => e.stopPropagation(); 
             
             const houseCount = p.houses || 0;
             const hl = (idx) => (houseCount === idx ? 'rent-highlight' : '');
