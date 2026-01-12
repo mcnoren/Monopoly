@@ -118,8 +118,10 @@
 
         #swipe-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; backdrop-filter: blur(5px); }
         .swipe-header { padding: 20px; display: flex; justify-content: center; align-items: center; color: white; pointer-events: none; }
-        .swipe-container { flex-grow: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; align-items: center; padding: 0 20px; gap: 20px; }
-        .swipe-item { scroll-snap-align: center; flex: 0 0 100%; display: flex; justify-content: center; pointer-events: auto; }
+        
+        /* UPDATED SWIPE CONTAINER FOR TIGHTER CARD VIEW */
+        .swipe-container { flex-grow: 1; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; align-items: center; padding: 0 25px; gap: 15px; }
+        .swipe-item { scroll-snap-align: center; flex: 0 0 auto; width: 300px; display: flex; justify-content: center; pointer-events: auto; }
 
         /* TRADE UI UPDATES */
         #trade-ui { position: absolute; top:0; left:0; width:100%; height:100%; background:#2c3e50; z-index:400; display:none; flex-direction:column; padding:10px; }
@@ -1087,18 +1089,11 @@
         
         if(targetId === null && firstAvailable !== null) targetId = firstAvailable;
         
-        // Auto-select logic
         if(targetId !== null) {
-            // Find the tab we just created and "click" it
-            const allTabs = tabs.querySelectorAll('.trade-tab');
-            // We need to match the correct tab index. Since we skipped 'myId', the index logic is tricky.
-            // Easier: just click the first tab available if targetId was null, or match by text/color?
-            // Simplest fix: Just call the builder directly for the target.
             showTradeBuilder(targetId);
             
-            // Highlight the correct tab visually
-            // (Looping again is inefficient but reliable for this small list)
             let tabIndex = 0;
+            const allTabs = tabs.querySelectorAll('.trade-tab');
             gameState.players.forEach(p => {
                  if (p.id !== myId) {
                      if (p.id === targetId && allTabs[tabIndex]) {
@@ -1112,14 +1107,10 @@
     
     function closeTrade() {
         document.getElementById('trade-ui').style.display = 'none';
-        // Removed step-toggle logic causing the crash
     }
 
     function showTradeBuilder(tid) {
         tradeTarget = tid;
-        // Removed step-toggle logic causing the crash
-        
-        // Update Balances
         const me = gameState.players.find(p => p.id === myId);
         const partner = gameState.players.find(p => p.id === tid);
         document.getElementById('trade-my-money-disp').innerText = `($${me.money})`;
@@ -1162,7 +1153,6 @@
             groups[grp].forEach(p => {
                 const row = document.createElement('div');
                 row.className = 'trade-item';
-                // row.style.borderLeft = ... (Removed redundant style, class handles it)
                 row.innerHTML = `<span class="trade-prop-name ${grp}">${p.name}</span><input type="checkbox" class="trade-check" data-idx="${p.idx}">`;
                 el.appendChild(row);
             });
