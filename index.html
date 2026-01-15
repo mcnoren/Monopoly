@@ -97,7 +97,6 @@
         .trade-icon-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.1); }
         .c-balance { font-size: 2rem; color: #2ecc71; font-weight: bold; }
         
-        /* NEW: DEBT STYLE */
         .balance-debt { color: #e74c3c !important; animation: blink 2s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
@@ -156,17 +155,52 @@
         .trade-prop-name { flex-grow:1; font-weight:bold; padding:2px 5px; border-radius:3px; color:black; text-shadow:none; margin-right:10px; }
         .trade-check { transform: scale(1.3); }
 
-        /* NEW ANIMATED TRADE OVERLAY */
+        /* ANIMATED TRADE OVERLAY */
         .tr-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:700; display:none; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; }
         
         .trade-anim-container { display:flex; justify-content:space-between; width:100%; max-width:800px; height:300px; position:relative; align-items:center; }
         .ta-side { width:40%; display:flex; flex-direction:column; align-items:center; color:white; font-weight:bold; font-size:1.5rem; z-index:2; }
         .ta-center { width:20%; display:flex; justify-content:center; align-items:center; font-size:3rem; z-index:2; }
         
-        .flying-card { width:60px; height:80px; background:white; border-radius:5px; border:2px solid black; position:absolute; display:flex; justify-content:center; align-items:center; font-size:0.6rem; color:black; font-weight:bold; text-align:center; box-shadow:0 0 10px rgba(0,0,0,0.5); z-index:1; }
-        
         @keyframes flyRight { 0% { left: 10%; opacity:1; transform:scale(1) rotate(0deg); } 50% { transform:scale(1.2) rotate(10deg); } 100% { left: 80%; opacity:0; transform:scale(0.5) rotate(20deg); } }
         @keyframes flyLeft { 0% { right: 10%; opacity:1; transform:scale(1) rotate(0deg); } 50% { transform:scale(1.2) rotate(-10deg); } 100% { right: 80%; opacity:0; transform:scale(0.5) rotate(-20deg); } }
+
+        /* NEW: Money Transfer Overlay (Host & Client) */
+        .transfer-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 2000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            animation: fadeIn 0.3s;
+        }
+
+        .transfer-box {
+            background: #2c3e50; padding: 30px; border-radius: 15px; border: 4px solid white;
+            text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            transform: scale(0.8); opacity: 0;
+            animation: popInTransfer 0.5s forwards;
+        }
+        @keyframes popInTransfer { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+
+        .t-amount { font-size: 4rem; font-weight: 900; color: #f1c40f; text-shadow: 2px 2px 0 #000; display: block; margin: 10px 0; }
+        .t-arrow { font-size: 2rem; color: white; margin: 10px 0; }
+        .t-desc { font-size: 1.5rem; color: #ccc; font-weight: bold; text-transform: uppercase; }
+
+        /* NEW: Better Trade Visuals */
+        .flying-deed {
+            width: 100px; height: 140px; background: white; border: 1px solid black;
+            position: absolute; display: flex; flex-direction: column;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); z-index: 10;
+            font-size: 0.6rem; color: black;
+        }
+        .fd-header { height: 25px; color: white; text-align: center; border: 1px solid black; font-weight: bold; padding-top: 2px; margin: 3px; font-size: 0.55rem; white-space: nowrap; overflow: hidden; }
+        .fd-body { text-align: center; padding: 5px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+
+        .flying-money {
+            width: 120px; height: 60px; background: #27ae60; border: 2px solid #2ecc71;
+            position: absolute; display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 0 10px gold; z-index: 15; color: white; font-weight: 900; font-size: 1.5rem;
+            border-radius: 5px; transform: rotate(-5deg);
+        }
 
         #error-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 15px 30px; border-radius: 30px; z-index: 1000; font-weight: bold; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 
@@ -236,6 +270,16 @@
             <div class="trade-anim-container" id="host-trade-anim-area"></div>
         </div>
 
+        <div id="host-transfer-overlay" class="transfer-overlay">
+            <div class="transfer-box">
+                <div id="t-anim-from" class="t-desc">PLAYER A</div>
+                <div class="t-arrow">▼ PAYS ▼</div>
+                <div id="t-anim-to" class="t-desc">PLAYER B</div>
+                <div id="t-anim-amt" class="t-amount">$0</div>
+                <div id="t-anim-reason" style="font-size: 1rem; color: #888; margin-top:5px;">Rent</div>
+            </div>
+        </div>
+
         <div id="dice-overlay" class="overlay-layer">
             <div style="width:300px; height:150px; background:transparent; display:flex; justify-content:center; align-items:center; flex-direction:column;">
                 <div id="dice-container-host" class="dice-container"></div>
@@ -257,6 +301,16 @@
         <div id="client-trade-anim-overlay" class="tr-overlay">
             <div class="tr-title" style="margin-bottom:30px;">TRADE SUCCESSFUL</div>
             <div class="trade-anim-container" id="client-trade-anim-area"></div>
+        </div>
+        
+        <div id="client-transfer-overlay" class="transfer-overlay">
+            <div class="transfer-box">
+                <div id="t-anim-from" class="t-desc">PLAYER A</div>
+                <div class="t-arrow">▼ PAYS ▼</div>
+                <div id="t-anim-to" class="t-desc">PLAYER B</div>
+                <div id="t-anim-amt" class="t-amount">$0</div>
+                <div id="t-anim-reason" style="font-size: 1rem; color: #888; margin-top:5px;">Rent</div>
+            </div>
         </div>
 
         <div id="trade-ui" onclick="if(event.target.id==='trade-ui') closeTrade()">
@@ -450,6 +504,75 @@
     function showJoin() { document.getElementById('main-menu').style.display = 'none'; document.getElementById('join-flow').style.display = 'flex'; }
     function hideJoin() { document.getElementById('join-flow').style.display = 'none'; document.getElementById('main-menu').style.display = 'flex'; }
 
+    // --- ANIMATION HELPERS ---
+    function triggerTransfer(fromId, toId, amount, reason = "Rent") {
+        const pFrom = gameState.players[fromId];
+        pFrom.money -= amount;
+        
+        let toName = "BANK";
+        if (toId === 'POT') {
+            gameState.potMoney += amount;
+            updatePot();
+            toName = "FREE PARKING POT";
+        } else if (toId !== null && gameState.players[toId]) {
+            gameState.players[toId].money += amount;
+            toName = gameState.players[toId].name;
+        }
+
+        const payload = {
+            type: 'TRANSFER_ANIM',
+            from: pFrom.name,
+            to: toName,
+            amount: amount,
+            reason: reason,
+            fromId: fromId,
+            toId: toId 
+        };
+        
+        playTransferAnim(payload);
+        Object.values(connections).forEach(c => c.send(payload));
+        
+        renderGameList();
+        broadcastState(); 
+    }
+
+    function playTransferAnim(data) {
+        const isHost = document.getElementById('host-screen').classList.contains('active');
+        const screenId = isHost ? 'host-screen' : 'client-screen';
+        
+        if (!isHost) {
+            if (myId !== data.fromId && myId !== data.toId && data.toId !== 'POT') return;
+        }
+
+        const overlay = document.querySelector(`#${isHost ? 'host-transfer-overlay' : 'client-transfer-overlay'}`);
+        const tFrom = overlay.querySelector('.transfer-box #t-anim-from');
+        const tTo = overlay.querySelector('.transfer-box #t-anim-to');
+        const tAmt = overlay.querySelector('.transfer-box #t-anim-amt');
+        const tRea = overlay.querySelector('.transfer-box #t-anim-reason');
+
+        tFrom.innerText = data.from;
+        tTo.innerText = data.to;
+        tAmt.innerText = `$${data.amount}`;
+        tRea.innerText = data.reason;
+
+        tAmt.style.color = (data.toId === myId || (isHost && data.toId === 'POT')) ? '#2ecc71' : '#e74c3c'; 
+        if(isHost) tAmt.style.color = '#f1c40f'; 
+
+        overlay.style.display = 'flex';
+        setTimeout(() => { overlay.style.display = 'none'; }, 3000);
+    }
+
+    function createMiniDeedHTML(propIdx) {
+        const p = boardMap[propIdx];
+        return `
+            <div class="fd-header ${p.group}">${p.name}</div>
+            <div class="fd-body">
+                <div>PRICE</div>
+                <div style="font-weight:bold">$${p.price}</div>
+            </div>
+        `;
+    }
+
     function addAI() {
         if (gameState.players.length >= 4) return;
         const pId = gameState.players.length;
@@ -464,7 +587,6 @@
         const p = gameState.players[pId];
         if (!p || !p.isAI) return;
 
-        // Trade response AI
         if(gameState.activeTrade && gameState.activeTrade.to === pId) {
             processAITradeResponse(pId);
             return;
@@ -475,9 +597,7 @@
         setTimeout(() => {
             if (gameState.turnIndex !== pId) return;
             
-            // AI Debt Logic - Dumb AI just mortgages everything if in debt
             if (p.money < 0) {
-                // Find owned property and mortgage it
                 const owned = boardMap.findIndex(prop => prop.owner === p.id && !prop.mortgaged);
                 if (owned !== -1) {
                     handleHostAction(pId, {type: 'MORTGAGE', propIdx: owned});
@@ -651,17 +771,12 @@
             broadcastState();
             await new Promise(r => setTimeout(r, 250));
         }
-        // Pass the dice roll (absolute value of steps) to handleLanding
         handleLanding(p, Math.abs(steps));
     }
 
     function handleHostAction(pId, action) {
         if(action.type === 'PING') return;
-        // Strict Turn Check for Game Actions (except join/trade/build)
         if(!gameState.gameStarted && action.type !== 'JOIN') return;
-
-        // Build/Mortgage can happen anytime if it's your turn, but usually restricted to rolling/idle
-        // Debt check: if in debt, limit actions? No, they need to mortgage to get out.
         
         if(pId !== gameState.turnIndex && action.type !== 'TRADE_ACCEPT' && action.type !== 'TRADE_DECLINE' && action.type !== 'TRADE_OFFER') return;
         const p = gameState.players[pId];
@@ -715,23 +830,22 @@
             pFrom.money = pFrom.money - trade.offer.money + trade.req.money;
             pTo.money = pTo.money - trade.req.money + trade.offer.money;
 
-            trade.offer.props.forEach(idx => { boardMap[idx].owner = trade.to; boardMap[idx].houses = 0; boardMap[idx].mortgaged = false; }); // Reset houses/mortgage? Mortgage usually stays
+            trade.offer.props.forEach(idx => { boardMap[idx].owner = trade.to; boardMap[idx].houses = 0; boardMap[idx].mortgaged = false; });
             trade.req.props.forEach(idx => { boardMap[idx].owner = trade.from; boardMap[idx].houses = 0; boardMap[idx].mortgaged = false; });
 
             log("Trade Completed!");
             
-            // Trigger Animation Data
             const animData = {
                 type: 'TRADE_ANIM',
                 leftName: pFrom.name, rightName: pTo.name,
-                leftItems: trade.offer.props.map(i => boardMap[i].name).concat(trade.offer.money > 0 ? [`$${trade.offer.money}`] : []),
-                rightItems: trade.req.props.map(i => boardMap[i].name).concat(trade.req.money > 0 ? [`$${trade.req.money}`] : [])
+                leftProps: trade.offer.props, 
+                leftMoney: trade.offer.money,
+                rightProps: trade.req.props, 
+                rightMoney: trade.req.money
             };
-            Object.values(connections).forEach(c => c.send(animData));
-            showTradeAnimation(animData); // Host view
 
-            if(trade.req.money > 0) { triggerMoneyAnim(trade.from, -trade.req.money); triggerMoneyAnim(trade.to, trade.req.money); }
-            if(trade.offer.money > 0) { triggerMoneyAnim(trade.from, trade.offer.money); triggerMoneyAnim(trade.to, -trade.offer.money); }
+            Object.values(connections).forEach(c => c.send(animData));
+            showTradeAnimation(animData); 
 
             gameState.activeTrade = null;
             broadcastState();
@@ -740,7 +854,7 @@
                 gameState.turnPhase = 'IDLE';
                 broadcastState();
                 processAITurn();
-            }, 6000); // Wait for anim
+            }, 6000); 
             return;
         }
 
@@ -936,7 +1050,7 @@
                         log(`Utility Rent: $${rent} (${ownerProps === 2 ? '10x' : '4x'} roll)`);
                     } else if (sq.group === 'bg-black') { 
                         const ownerProps = boardMap.filter(s => s.group === 'bg-black' && s.owner === sq.owner && !s.mortgaged).length;
-                        rent = sq.rent[ownerProps - 1] || 0; // fallback 0 if calculation weird
+                        rent = sq.rent[ownerProps - 1] || 0; 
                     } else { 
                         rent = sq.rent[sq.houses];
                         if(sq.houses === 0) {
@@ -946,11 +1060,9 @@
                         }
                     }
                     
-                    p.money -= rent;
-                    gameState.players[sq.owner].money += rent;
-                    triggerMoneyAnim(p.id, -rent);
-                    triggerMoneyAnim(sq.owner, rent);
-                    log(`Paid $${rent} rent.`);
+                    if (rent > 0) {
+                        triggerTransfer(p.id, sq.owner, rent, `Rent on ${sq.name}`);
+                    }
                 }
                 checkNextPhase();
             } else { checkNextPhase(); }
@@ -977,10 +1089,9 @@
     }
 
     function payTax(p, amt) {
-        p.money -= amt;
-        triggerMoneyAnim(p.id, -amt);
-        if(gameState.rules.pot) { gameState.potMoney += amt; updatePot(); log(`Paid $${amt} tax to Pot.`); } 
-        else { log(`Paid $${amt} tax.`); }
+        const target = gameState.rules.pot ? 'POT' : null;
+        triggerTransfer(p.id, target, amt, "Tax");
+        if(!gameState.rules.pot) log(`Paid $${amt} tax.`); 
     }
 
     function drawCard(p, type) {
@@ -1098,29 +1209,43 @@
     }
 
     function showTradeAnimation(data) {
-        const overlay = document.getElementById('trade-anim-overlay'); // Host
-        const container = document.getElementById('host-trade-anim-area');
+        const isHost = document.getElementById('host-screen').classList.contains('active');
+        const overlay = document.getElementById(isHost ? 'trade-anim-overlay' : 'client-trade-anim-overlay');
+        const container = document.getElementById(isHost ? 'host-trade-anim-area' : 'client-trade-anim-area');
+        
         container.innerHTML = `
             <div class="ta-side">${data.leftName}</div>
             <div class="ta-center">🤝</div>
             <div class="ta-side">${data.rightName}</div>
         `;
-        
-        // Spawn cards
-        data.leftItems.forEach((item, i) => {
-            const card = document.createElement('div');
-            card.className = 'flying-card';
-            card.innerText = item;
-            card.style.animation = `flyRight 2s forwards ${i*0.2}s`;
-            container.appendChild(card);
+
+        const spawnFlyer = (contentHTML, isRight, delayIdx, isMoney) => {
+            const el = document.createElement('div');
+            el.className = isMoney ? 'flying-money' : 'flying-deed';
+            el.innerHTML = contentHTML;
+            
+            const animName = isRight ? 'flyLeft' : 'flyRight';
+            el.style.animation = `${animName} 2s forwards ${delayIdx * 0.2}s`;
+            
+            container.appendChild(el);
+        };
+
+        let delay = 0;
+
+        if (data.leftMoney > 0) {
+            spawnFlyer(`$${data.leftMoney}`, false, delay++, true);
+        }
+        data.leftProps.forEach(idx => {
+            spawnFlyer(createMiniDeedHTML(idx), false, delay++, false);
         });
-        
-        data.rightItems.forEach((item, i) => {
-            const card = document.createElement('div');
-            card.className = 'flying-card';
-            card.innerText = item;
-            card.style.animation = `flyLeft 2s forwards ${i*0.2}s`;
-            container.appendChild(card);
+
+        delay = 0; 
+
+        if (data.rightMoney > 0) {
+            spawnFlyer(`$${data.rightMoney}`, true, delay++, true);
+        }
+        data.rightProps.forEach(idx => {
+            spawnFlyer(createMiniDeedHTML(idx), true, delay++, false);
         });
 
         overlay.style.display = 'flex';
@@ -1162,22 +1287,12 @@
             if(myId === data.pId) showMoneyAnim(data.amount);
             return;
         }
+        if(data.type === 'TRANSFER_ANIM') {
+            playTransferAnim(data);
+            return;
+        }
         if(data.type === 'TRADE_ANIM') {
-            const overlay = document.getElementById('client-trade-anim-overlay');
-            const container = document.getElementById('client-trade-anim-area');
-            container.innerHTML = `
-                <div class="ta-side">${data.leftName}</div>
-                <div class="ta-center">🤝</div>
-                <div class="ta-side">${data.rightName}</div>
-            `;
-            data.leftItems.forEach((item, i) => {
-                const card = document.createElement('div'); card.className = 'flying-card'; card.innerText = item; card.style.animation = `flyRight 2s forwards ${i*0.2}s`; container.appendChild(card);
-            });
-            data.rightItems.forEach((item, i) => {
-                const card = document.createElement('div'); card.className = 'flying-card'; card.innerText = item; card.style.animation = `flyLeft 2s forwards ${i*0.2}s`; container.appendChild(card);
-            });
-            overlay.style.display = 'flex';
-            setTimeout(() => { overlay.style.display = 'none'; }, 5500);
+            showTradeAnimation(data);
             return;
         }
         if(data.type === 'WELCOME') { switchScreen('client-screen'); myId = data.player.id; document.getElementById('c-name').innerText = data.player.name; lastBalance = data.player.money; }
@@ -1190,14 +1305,6 @@
             gameState.tradeNotification = data.tradeNotification;
             updateClientUI(data); 
         }
-    }
-
-    function showMoneyAnim(amount) {
-        const el = document.createElement('div');
-        el.className = amount > 0 ? 'money-popup mp-gain' : 'money-popup mp-loss';
-        el.innerText = (amount > 0 ? '+' : '') + '$' + amount;
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 2500);
     }
 
     function updateClientUI(state) {
@@ -1601,10 +1708,8 @@
             }
         }
 
-        // 1. Queue requested
         pushBuild(targetProp.originalIndex);
 
-        // 2. Validate Even Build
         let safe = false;
         let loops = 0;
         while(!safe && loops < 20) {
