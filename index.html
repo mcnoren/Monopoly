@@ -39,6 +39,9 @@
         .btn-purple { background: #9b59b6; color: white; }
         .btn-orange { background: #e67e22; color: white; }
         .btn-text { background: transparent; color: #ccc; padding: 10px; font-size: 1rem; }
+        /* New Resume Button Style */
+        .btn-resume { background: #e67e22; color: white; width: 100%; border: 2px solid #f39c12; margin-bottom: 15px; display: none; flex-direction: column; align-items: center; }
+        .resume-time { font-size: 0.8rem; font-weight: normal; opacity: 0.9; }
 
         #landing-screen { flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #2c3e50 0%, #000 100%); }
         #landing-screen h1 { font-size: 4rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 5px; }
@@ -227,8 +230,13 @@
     <div id="landing-screen" class="screen active">
         <h1>Monopoly</h1>
         <div id="main-menu" class="menu-container">
-            <button class="btn btn-green" onclick="initHost()" style="width: 250px;">HOST GAME</button>
-            <button class="btn btn-blue" onclick="showJoin()" style="width: 250px;">JOIN GAME</button>
+            <button id="btn-resume" class="btn btn-resume" onclick="resumeHost()">
+                RESUME GAME
+                <span id="resume-time" class="resume-time"></span>
+            </button>
+
+            <button class="btn btn-green" onclick="initHost()" style="width: 250px;">HOST NEW GAME</button>
+            <button id="btn-rejoin-client" class="btn btn-blue" onclick="showJoin()" style="width: 250px;">JOIN GAME</button>
         </div>
         <div id="join-flow" class="menu-container">
             <input type="text" id="name-input" class="input-std" placeholder="NICKNAME" maxlength="12">
@@ -390,6 +398,10 @@
     const APP_ID = "poly-lob-v22-"; 
     const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
+    
+    // STORAGE KEYS
+    const HOST_STORAGE_KEY = "monopoly_host_data";
+    const CLIENT_STORAGE_KEY = "monopoly_client_data";
 
     const chanceCards = [
         { text: "Advance to Go (Collect $200)", action: "move", target: 0 },
@@ -479,6 +491,7 @@
     let heartbeater = null;
     let clientPropState = [];
     let clientTurnState = false;
+    let currentRoomCode = "";
 
     let gameState = {
         players: [], 
@@ -493,8 +506,75 @@
         tradeNotification: null,
         gameStarted: false,
         movedByCard: false,
-        waitingForReRoll: false 
+        waitingForReRoll: false,
+        timestamp: 0 // New field for saving
     };
+
+    // --- INITIALIZATION & RECONNECTION CHECKS ---
+    window.onload = function() {
+        checkPreviousHostGame();
+        checkPreviousClientGame();
+    };
+
+    function checkPreviousHostGame() {
+        const savedData = localStorage.getItem(HOST_STORAGE_KEY);
+        if (savedData) {
+            try {
+                const parsed = JSON.parse(savedData);
+                const btn = document.getElementById('btn-resume');
+                const timeStr = new Date(parsed.gameState.timestamp).toLocaleString();
+                document.getElementById('resume-time').innerText = timeStr;
+                btn.style.display = 'flex'; // Show button
+            } catch(e) { console.error("Save corrupted", e); }
+        }
+    }
+
+    function checkPreviousClientGame() {
+        const savedData = localStorage.getItem(CLIENT_STORAGE_KEY);
+        if (savedData) {
+            const btn = document.getElementById('btn-rejoin-client');
+            btn.innerText = "REJOIN LAST GAME";
+            try {
+                const parsed = JSON.parse(savedData);
+                // Pre-fill input for convenience
+                document.getElementById('code-input').value = parsed.roomCode;
+                // Auto-join could go here, but button click is safer
+            } catch(e) {}
+        }
+    }
+
+    // --- HOST PERSISTENCE ---
+    function saveHostState() {
+        // Save whenever state changes significantly
+        gameState.timestamp = Date.now();
+        const saveObj = {
+            gameState: gameState,
+            boardMap: boardMap, // Board has ownership/mortgage data
+            roomCode: currentRoomCode
+        };
+        localStorage.setItem(HOST_STORAGE_KEY, JSON.stringify(saveObj));
+    }
+
+    function resumeHost() {
+        const savedData = localStorage.getItem(HOST_STORAGE_KEY);
+        if(!savedData) return;
+        
+        try {
+            const parsed = JSON.parse(savedData);
+            gameState = parsed.gameState;
+            // Restore board map carefully (preserving functions/static data if needed, but here simple overwrite works for data)
+            // Note: Our boardMap in memory has functions? No, just data. So overwrite is fine.
+            // However, we need to merge static data (like group names) if they aren't in save.
+            // Since save is full JSON, it's fine.
+            for(let i=0; i<boardMap.length; i++) {
+                Object.assign(boardMap[i], parsed.boardMap[i]);
+            }
+            
+            initHost(parsed.roomCode); // Resume with same code
+        } catch(e) {
+            showError("Failed to resume save file.");
+        }
+    }
 
     function switchScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
     function generateCode() { let r=""; for(let i=0;i<4;i++) r+=CODE_CHARS.charAt(Math.floor(Math.random()*CODE_CHARS.length)); return r; }
@@ -670,20 +750,69 @@
         return val;
     }
 
-    function initHost() {
+    function initHost(forcedCode = null) {
         if(typeof Peer === 'undefined') { showError("PeerJS failed to load. Check internet."); return; }
-        const code = generateCode();
-        switchScreen('lobby-screen');
+        const code = forcedCode || generateCode();
+        currentRoomCode = code;
+        
+        if (forcedCode) {
+            // If resuming, switch directly to host screen (skip lobby)
+            switchScreen('host-screen');
+            if(gameState.rules.pot) document.getElementById('pot-display').style.display = 'block';
+            renderGameList();
+            renderBuildings();
+            renderOwnerBars();
+            gameState.players.forEach(p => createToken(p)); // Re-render tokens
+            log("Game Resumed.");
+        } else {
+            switchScreen('lobby-screen');
+        }
+        
         document.getElementById('lobby-code').innerText = code;
         peer = new Peer(APP_ID + code, PEER_CONFIG);
-        peer.on('error', (err) => { if(err.type === 'unavailable-id') { setTimeout(initHost, 1000); } else { showError("Host Network Error."); } });
+        peer.on('error', (err) => { if(err.type === 'unavailable-id') { setTimeout(() => initHost(forcedCode), 1000); } else { showError("Host Network Error."); } });
         peer.on('connection', handleHostConn);
     }
 
     function handleHostConn(conn) {
-        if(gameState.gameStarted) { conn.close(); return; }
         conn.on('data', (data) => {
+            // NEW: Reconnection Logic
+            if(data.type === 'RECONNECT') {
+                const oldId = data.id;
+                // Validate if player exists
+                const p = gameState.players.find(pl => pl.id === oldId);
+                if(p) {
+                    connections[oldId] = conn; // Update connection socket
+                    conn.send({ type: 'WELCOME', player: p });
+                    conn.off('data'); 
+                    conn.on('data', d => handleHostAction(oldId, d)); // Bind actions
+                    // Immediately send state so they are up to date
+                    const propData = boardMap.map(s => ({owner: s.owner, houses: s.houses, mortgaged: s.mortgaged}));
+                    conn.send({
+                        type: 'STATE',
+                        players: gameState.players,
+                        turnIndex: gameState.turnIndex,
+                        turnPhase: gameState.turnPhase,
+                        activeCard: gameState.activeCard,
+                        pendingProp: gameState.pendingProp !== null ? boardMap[gameState.pendingProp] : null,
+                        properties: propData,
+                        activeTrade: gameState.activeTrade,
+                        tradeNotification: gameState.tradeNotification
+                    });
+                    log(`${p.name} reconnected.`);
+                    // Update heartbeat
+                    setInterval(() => { if(conn.open) conn.send({type:'PING'}); }, 2000);
+                } else {
+                    conn.send({type:'ERROR', msg:'Game not found or ID invalid.'});
+                }
+                return;
+            }
+
             if(data.type === 'JOIN') {
+                if (gameState.gameStarted) {
+                    conn.send({type:'ERROR', msg:'Game already started.'}); 
+                    return; 
+                }
                 const pId = gameState.players.length;
                 if(pId >= 4) { conn.send({type:'ERROR', msg:'Lobby Full'}); return; }
                 const newPlayer = { id: pId, name: data.name || `Player ${pId+1}`, colorClass: ["p-red","p-blue","p-green","p-yellow"][pId], money: 1500, position: 0, jailed: false, jailTurns: 0, getOutCard: 0, doublesStreak: 0 };
@@ -1190,6 +1319,7 @@
     function closeOverlay() { document.getElementById('overlay-card').style.display = 'none'; }
     function broadcastState(msg) {
         if(msg) log(msg);
+        saveHostState(); // SAVE ON EVERY STATE CHANGE
         renderGameList();
         renderBuildings();
         renderOwnerBars();
@@ -1264,7 +1394,20 @@
         peer.on('error', (err) => { btn.innerText = "CONNECT"; showError("Connection Failed: " + err.type); });
         peer.on('open', () => {
             hostConn = peer.connect(APP_ID + code, { reliable: true });
-            hostConn.on('open', () => { hostConn.send({ type: 'JOIN', name: name || "Player" }); startHeartbeat(hostConn); });
+            hostConn.on('open', () => { 
+                // CHECK IF THIS IS A RECONNECTION
+                const savedData = localStorage.getItem(CLIENT_STORAGE_KEY);
+                if(savedData) {
+                    const parsed = JSON.parse(savedData);
+                    if(parsed.roomCode === code) {
+                        hostConn.send({ type: 'RECONNECT', id: parsed.playerId });
+                        startHeartbeat(hostConn);
+                        return;
+                    }
+                }
+                hostConn.send({ type: 'JOIN', name: name || "Player" }); 
+                startHeartbeat(hostConn); 
+            });
             hostConn.on('error', () => { showError("Could not reach host. Retrying..."); setTimeout(initPlayer, 1000); });
             hostConn.on('data', handleClientData);
             setTimeout(() => { if(!hostConn.open) { showError("Connection timed out. Check code."); btn.innerText = "CONNECT"; } }, 5000);
@@ -1295,7 +1438,16 @@
             showTradeAnimation(data);
             return;
         }
-        if(data.type === 'WELCOME') { switchScreen('client-screen'); myId = data.player.id; document.getElementById('c-name').innerText = data.player.name; lastBalance = data.player.money; }
+        if(data.type === 'WELCOME') { 
+            switchScreen('client-screen'); 
+            myId = data.player.id; 
+            document.getElementById('c-name').innerText = data.player.name; 
+            lastBalance = data.player.money; 
+            
+            // SAVE CONNECTION INFO FOR REFRESH
+            const code = document.getElementById('code-input').value.toUpperCase();
+            localStorage.setItem(CLIENT_STORAGE_KEY, JSON.stringify({ roomCode: code, playerId: myId }));
+        }
         else if(data.type === 'ERROR') { showError(data.msg); document.getElementById('btn-connect').innerText = "CONNECT"; }
         else if(data.type === 'LOBBY_UPDATE') { document.getElementById('c-status').innerText = "Host is configuring rules..."; }
         else if(data.type === 'STATE') { 
