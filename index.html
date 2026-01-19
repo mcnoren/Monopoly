@@ -39,9 +39,10 @@
         .btn-purple { background: #9b59b6; color: white; }
         .btn-orange { background: #e67e22; color: white; }
         .btn-text { background: transparent; color: #ccc; padding: 10px; font-size: 1rem; }
-        /* New Resume Button Style */
-        .btn-resume { background: #e67e22; color: white; width: 100%; border: 2px solid #f39c12; margin-bottom: 15px; display: none; flex-direction: column; align-items: center; }
-        .resume-time { font-size: 0.8rem; font-weight: normal; opacity: 0.9; }
+        
+        /* Persistent State Buttons */
+        .btn-resume { background: #e67e22; color: white; width: 250px; border: 2px solid #f39c12; margin-bottom: 10px; display: none; flex-direction: column; align-items: center; }
+        .resume-info { font-size: 0.8rem; font-weight: normal; opacity: 0.9; margin-top: 2px;}
 
         #landing-screen { flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #2c3e50 0%, #000 100%); }
         #landing-screen h1 { font-size: 4rem; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 5px; }
@@ -230,18 +231,23 @@
     <div id="landing-screen" class="screen active">
         <h1>Monopoly</h1>
         <div id="main-menu" class="menu-container">
-            <button id="btn-resume" class="btn btn-resume" onclick="resumeHost()">
-                RESUME GAME
-                <span id="resume-time" class="resume-time"></span>
+            <button id="btn-resume-host" class="btn btn-resume" onclick="resumeHost()">
+                RESUME HOSTING
+                <span id="resume-time" class="resume-info"></span>
+            </button>
+            
+            <button id="btn-rejoin-client" class="btn btn-resume" style="background: #3498db; border-color: #2980b9;" onclick="rejoinClient()">
+                REJOIN PREVIOUS GAME
+                <span id="rejoin-info" class="resume-info"></span>
             </button>
 
             <button class="btn btn-green" onclick="initHost()" style="width: 250px;">HOST NEW GAME</button>
-            <button id="btn-rejoin-client" class="btn btn-blue" onclick="showJoin()" style="width: 250px;">JOIN GAME</button>
+            <button class="btn btn-blue" onclick="showJoin()" style="width: 250px;">JOIN NEW GAME</button>
         </div>
         <div id="join-flow" class="menu-container">
             <input type="text" id="name-input" class="input-std" placeholder="NICKNAME" maxlength="12">
-            <input type="text" id="code-input" class="input-std input-code" placeholder="ROOM CODE" maxlength="4">
-            <button id="btn-connect" class="btn btn-green" onclick="initPlayer()" style="width: 250px;">CONNECT</button>
+            <input type="text" id="code-input" class="input-std input-code" placeholder="ROOM CODE" maxlength="4" oninput="this.value = this.value.toUpperCase()">
+            <button id="btn-connect" class="btn btn-green" onclick="initPlayer(false)" style="width: 250px;">CONNECT</button>
             <button class="btn btn-text" onclick="hideJoin()">Back</button>
         </div>
     </div>
@@ -400,8 +406,8 @@
     const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } };
     
     // STORAGE KEYS
-    const HOST_STORAGE_KEY = "monopoly_host_data";
-    const CLIENT_STORAGE_KEY = "monopoly_client_data";
+    const HOST_STORAGE_KEY = "monopoly_host_data_v2";
+    const CLIENT_STORAGE_KEY = "monopoly_client_data_v2";
 
     const chanceCards = [
         { text: "Advance to Go (Collect $200)", action: "move", target: 0 },
@@ -507,7 +513,7 @@
         gameStarted: false,
         movedByCard: false,
         waitingForReRoll: false,
-        timestamp: 0 // New field for saving
+        timestamp: 0 
     };
 
     // --- INITIALIZATION & RECONNECTION CHECKS ---
@@ -521,10 +527,10 @@
         if (savedData) {
             try {
                 const parsed = JSON.parse(savedData);
-                const btn = document.getElementById('btn-resume');
+                const btn = document.getElementById('btn-resume-host');
                 const timeStr = new Date(parsed.gameState.timestamp).toLocaleString();
                 document.getElementById('resume-time').innerText = timeStr;
-                btn.style.display = 'flex'; // Show button
+                btn.style.display = 'flex'; 
             } catch(e) { console.error("Save corrupted", e); }
         }
     }
@@ -532,24 +538,23 @@
     function checkPreviousClientGame() {
         const savedData = localStorage.getItem(CLIENT_STORAGE_KEY);
         if (savedData) {
-            const btn = document.getElementById('btn-rejoin-client');
-            btn.innerText = "REJOIN LAST GAME";
             try {
                 const parsed = JSON.parse(savedData);
-                // Pre-fill input for convenience
+                const btn = document.getElementById('btn-rejoin-client');
+                document.getElementById('rejoin-info').innerText = `Room: ${parsed.roomCode}`;
+                btn.style.display = 'flex';
+                // Auto-fill input just in case manual is needed
                 document.getElementById('code-input').value = parsed.roomCode;
-                // Auto-join could go here, but button click is safer
             } catch(e) {}
         }
     }
 
     // --- HOST PERSISTENCE ---
     function saveHostState() {
-        // Save whenever state changes significantly
         gameState.timestamp = Date.now();
         const saveObj = {
             gameState: gameState,
-            boardMap: boardMap, // Board has ownership/mortgage data
+            boardMap: boardMap, 
             roomCode: currentRoomCode
         };
         localStorage.setItem(HOST_STORAGE_KEY, JSON.stringify(saveObj));
@@ -562,20 +567,16 @@
         try {
             const parsed = JSON.parse(savedData);
             gameState = parsed.gameState;
-            // Restore board map carefully (preserving functions/static data if needed, but here simple overwrite works for data)
-            // Note: Our boardMap in memory has functions? No, just data. So overwrite is fine.
-            // However, we need to merge static data (like group names) if they aren't in save.
-            // Since save is full JSON, it's fine.
             for(let i=0; i<boardMap.length; i++) {
                 Object.assign(boardMap[i], parsed.boardMap[i]);
             }
-            
-            initHost(parsed.roomCode); // Resume with same code
+            initHost(parsed.roomCode); 
         } catch(e) {
             showError("Failed to resume save file.");
         }
     }
 
+    // --- HELPER FUNCTIONS ---
     function switchScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
     function generateCode() { let r=""; for(let i=0;i<4;i++) r+=CODE_CHARS.charAt(Math.floor(Math.random()*CODE_CHARS.length)); return r; }
     function log(msg) { const d = document.createElement('div'); d.innerText = msg; document.getElementById('game-log').prepend(d); }
@@ -756,13 +757,12 @@
         currentRoomCode = code;
         
         if (forcedCode) {
-            // If resuming, switch directly to host screen (skip lobby)
             switchScreen('host-screen');
             if(gameState.rules.pot) document.getElementById('pot-display').style.display = 'block';
             renderGameList();
             renderBuildings();
             renderOwnerBars();
-            gameState.players.forEach(p => createToken(p)); // Re-render tokens
+            gameState.players.forEach(p => createToken(p)); 
             log("Game Resumed.");
         } else {
             switchScreen('lobby-screen');
@@ -776,17 +776,19 @@
 
     function handleHostConn(conn) {
         conn.on('data', (data) => {
-            // NEW: Reconnection Logic
+            // RECONNECTION LOGIC
             if(data.type === 'RECONNECT') {
                 const oldId = data.id;
-                // Validate if player exists
                 const p = gameState.players.find(pl => pl.id === oldId);
                 if(p) {
-                    connections[oldId] = conn; // Update connection socket
+                    // CRITICAL: Update the connections object with the NEW socket
+                    connections[oldId] = conn; 
+                    
                     conn.send({ type: 'WELCOME', player: p });
                     conn.off('data'); 
-                    conn.on('data', d => handleHostAction(oldId, d)); // Bind actions
-                    // Immediately send state so they are up to date
+                    conn.on('data', d => handleHostAction(oldId, d)); 
+                    
+                    // Send full state immediately
                     const propData = boardMap.map(s => ({owner: s.owner, houses: s.houses, mortgaged: s.mortgaged}));
                     conn.send({
                         type: 'STATE',
@@ -800,7 +802,6 @@
                         tradeNotification: gameState.tradeNotification
                     });
                     log(`${p.name} reconnected.`);
-                    // Update heartbeat
                     setInterval(() => { if(conn.open) conn.send({type:'PING'}); }, 2000);
                 } else {
                     conn.send({type:'ERROR', msg:'Game not found or ID invalid.'});
@@ -1383,35 +1384,52 @@
     }
 
     // --- CLIENT ---
-    function initPlayer() {
+    function initPlayer(isRejoin) {
         if(typeof Peer === 'undefined') { showError("PeerJS failed to load. Check internet."); return; }
-        const name = document.getElementById('name-input').value.trim();
-        const code = document.getElementById('code-input').value.toUpperCase();
-        const btn = document.getElementById('btn-connect');
+        
+        let name, code, savedId;
+        
+        if (isRejoin) {
+            // Load from save
+            const savedData = localStorage.getItem(CLIENT_STORAGE_KEY);
+            if (!savedData) return;
+            const parsed = JSON.parse(savedData);
+            code = parsed.roomCode;
+            savedId = parsed.playerId;
+            name = "Rejoining...";
+        } else {
+            // Manual Join
+            name = document.getElementById('name-input').value.trim();
+            code = document.getElementById('code-input').value.toUpperCase();
+        }
+
+        const btn = document.getElementById(isRejoin ? 'btn-rejoin-client' : 'btn-connect');
         if(!code) { showError("Please enter room code"); return; }
+        
+        const originalText = btn.innerText;
         btn.innerText = "CONNECTING...";
+        
         peer = new Peer(PEER_CONFIG);
-        peer.on('error', (err) => { btn.innerText = "CONNECT"; showError("Connection Failed: " + err.type); });
+        peer.on('error', (err) => { btn.innerText = originalText; showError("Connection Failed: " + err.type); });
         peer.on('open', () => {
             hostConn = peer.connect(APP_ID + code, { reliable: true });
             hostConn.on('open', () => { 
-                // CHECK IF THIS IS A RECONNECTION
-                const savedData = localStorage.getItem(CLIENT_STORAGE_KEY);
-                if(savedData) {
-                    const parsed = JSON.parse(savedData);
-                    if(parsed.roomCode === code) {
-                        hostConn.send({ type: 'RECONNECT', id: parsed.playerId });
-                        startHeartbeat(hostConn);
-                        return;
-                    }
+                if (isRejoin) {
+                    hostConn.send({ type: 'RECONNECT', id: savedId });
+                } else {
+                    hostConn.send({ type: 'JOIN', name: name || "Player" }); 
                 }
-                hostConn.send({ type: 'JOIN', name: name || "Player" }); 
                 startHeartbeat(hostConn); 
             });
-            hostConn.on('error', () => { showError("Could not reach host. Retrying..."); setTimeout(initPlayer, 1000); });
+            hostConn.on('error', () => { showError("Could not reach host. Retrying..."); setTimeout(() => initPlayer(isRejoin), 1000); });
             hostConn.on('data', handleClientData);
-            setTimeout(() => { if(!hostConn.open) { showError("Connection timed out. Check code."); btn.innerText = "CONNECT"; } }, 5000);
+            setTimeout(() => { if(!hostConn.open) { showError("Connection timed out. Check code."); btn.innerText = originalText; } }, 5000);
         });
+    }
+
+    // New specific function for the Rejoin Button
+    function rejoinClient() {
+        initPlayer(true);
     }
 
     let lastBalance = 0;
@@ -1444,8 +1462,14 @@
             document.getElementById('c-name').innerText = data.player.name; 
             lastBalance = data.player.money; 
             
-            // SAVE CONNECTION INFO FOR REFRESH
-            const code = document.getElementById('code-input').value.toUpperCase();
+            // PERSIST CONNECTION INFO
+            // We read the code from input if manual, or existing storage if rejoin
+            let code = document.getElementById('code-input').value.toUpperCase();
+            if(!code) {
+                 const saved = localStorage.getItem(CLIENT_STORAGE_KEY);
+                 if(saved) code = JSON.parse(saved).roomCode;
+            }
+            
             localStorage.setItem(CLIENT_STORAGE_KEY, JSON.stringify({ roomCode: code, playerId: myId }));
         }
         else if(data.type === 'ERROR') { showError(data.msg); document.getElementById('btn-connect').innerText = "CONNECT"; }
